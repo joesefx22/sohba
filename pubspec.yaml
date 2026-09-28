@@ -1,0 +1,50 @@
+name: sohba
+description: "صحبة — رفيقك على طريق الطاعة"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.11.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+
+  # ---------- UI (kept from mochi) ----------
+  cupertino_icons: ^1.0.8
+  google_fonts: ^6.2.1
+  flutter_animate: ^4.3.0
+  confetti: ^0.7.0
+  percent_indicator: ^4.2.3
+  shimmer: ^3.0.0
+  intl: ^0.20.2
+  collection: ^1.15.0
+
+  # ---------- State ----------
+  provider: ^6.0.5
+
+  # ---------- Backend ----------
+  supabase_flutter: ^2.5.0
+
+  # ---------- Prayer Times ----------
+  adhan: ^2.0.0
+
+  # ---------- Local Cache ----------
+  shared_preferences: ^2.2.0
+
+  # ---------- Will add later (need native setup) ----------
+  # awqat: ^0.1.14         # notifications/adhan background
+  # easy_conffeti: ^0.1.5  # celebrations
+  # geolocator: ^12.0.0    # user location (default = Cairo)
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/athkar/
