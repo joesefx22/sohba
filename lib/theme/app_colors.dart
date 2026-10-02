@@ -1,43 +1,60 @@
 import 'package:flutter/material.dart';
 
-/// App color palette for the Mochi Points gaming theme.
+/// Sohba — Islamic-themed color palette
 class AppColors {
   AppColors._();
 
-  // Primary Gradient (Coral to Orange)
-  static const Color primaryStart = Color(0xFFFF6B6B);
-  static const Color primaryEnd = Color(0xFFFF8E53);
+  // ============================================
+  // PRIMARY — Deep Islamic Green
+  // ============================================
+  static const Color primaryStart = Color(0xFF198754);
+  static const Color primaryEnd = Color(0xFF0F5132);
   static const List<Color> primaryGradient = [primaryStart, primaryEnd];
 
-  // Background Gradient (Dark)
-  static const Color backgroundStart = Color(0xFF1A1B2E);
-  static const Color backgroundEnd = Color(0xFF2D2E4A);
+  // ============================================
+  // BACKGROUND — Dark green-teal
+  // ============================================
+  static const Color backgroundStart = Color(0xFF0A1F1A);
+  static const Color backgroundEnd = Color(0xFF142B25);
   static const List<Color> backgroundGradient = [backgroundStart, backgroundEnd];
 
-  // Surface Colors
-  static const Color surface = Color(0xFF2A2B42);
-  static const Color surfaceElevated = Color(0xFF3A3B52);
+  // ============================================
+  // SURFACE
+  // ============================================
+  static const Color surface = Color(0xFF1E3A32);
+  static const Color surfaceElevated = Color(0xFF2A4A40);
 
-  // Accent Colors
-  static const Color gold = Color(0xFFFFE66D);
-  static const Color teal = Color(0xFF4ECDC4);
+  // ============================================
+  // ACCENT — Traditional Gold
+  // ============================================
+  static const Color gold = Color(0xFFD4AF37);
+  static const Color goldBright = Color(0xFFF4D03F);
 
-  // Text Colors
-  static const Color text = Color(0xFFFFFFFF);
-  static const Color textSecondary = Color(0xFFB8B8C8);
+  // ============================================
+  // TEXT
+  // ============================================
+  static const Color text = Color(0xFFF5F5F0);
+  static const Color textSecondary = Color(0xFFA8B5B0);
 
-  // Rarity Colors
+  // ============================================
+  // RARITY (mapped to spiritual significance)
+  // ============================================
   static const Color rarityCommon = Color(0xFFB8B8B8);
   static const Color rarityRare = Color(0xFF4A9DFF);
   static const Color rarityEpic = Color(0xFFA855F7);
-  static const Color rarityLegendary = Color(0xFFF59E0B);
+  static const Color rarityLegendary = Color(0xFFD4AF37);
 
-  // Semantic Colors
-  static const Color success = teal;
+  // ============================================
+  // SEMANTIC
+  // ============================================
+  static const Color teal = Color(0xFF2ECC71);
+  static const Color success = Color(0xFF198754);
   static const Color error = Color(0xFFEF4444);
   static const Color warning = Color(0xFFF59E0B);
 
-  // Gradient Helpers
+  // ============================================
+  // GRADIENTS
+  // ============================================
   static LinearGradient get primaryLinearGradient => const LinearGradient(
         colors: primaryGradient,
         begin: Alignment.topLeft,
@@ -50,7 +67,12 @@ class AppColors {
         end: Alignment.bottomCenter,
       );
 
-  /// Returns the color for a given rarity string.
+  static LinearGradient get goldLinearGradient => const LinearGradient(
+        colors: [goldBright, gold],
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+      );
+
   static Color getRarityColor(String rarity) {
     switch (rarity.toLowerCase()) {
       case 'legendary':
@@ -59,7 +81,6 @@ class AppColors {
         return rarityEpic;
       case 'rare':
         return rarityRare;
-      case 'common':
       default:
         return rarityCommon;
     }
