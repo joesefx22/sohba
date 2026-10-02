@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/prayer_log.dart';
 import '../../providers/auth_provider.dart';
@@ -7,9 +8,12 @@ import '../../providers/prayer_provider.dart';
 import '../../providers/streak_provider.dart';
 import '../../providers/badge_provider.dart';
 import '../../providers/notification_provider.dart';
-import '../../models/badge.dart';
+import '../../providers/athkar_provider.dart';
+import '../../providers/lock_provider.dart';
+import '../../repositories/prayer_repository.dart';
 import '../../services/prayer_engine.dart';
 import '../../services/adhan_service.dart';
+import '../../services/challenge_service.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/prayer_complete_animation.dart';
@@ -17,7 +21,6 @@ import '../../widgets/badge_unlock_animation.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/app_button.dart';
 
-/// Full-page prayer view with action buttons per window.
 class PrayerPage extends StatelessWidget {
   const PrayerPage({super.key});
 
@@ -64,8 +67,12 @@ class _PrayerRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PrayerProvider>();
-    final auth = context.read<AuthProvider>();
-    final log = provider.todayLogs[prayer]!;
+    final log = provider.todayLogs[prayer] ??
+        PrayerLog.empty(
+          userId: '',
+          date: provider.todayDate,
+          prayer: prayer,
+        );
     final timeline = provider.timelineFor(prayer);
     final now = DateTime.now();
     final phase = timeline.phaseAt(now);
@@ -78,11 +85,13 @@ class _PrayerRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(prayer.icon,
-                  color: log.status == PrayerStatus.pending
-                      ? AppColors.textSecondary
-                      : log.status.color,
-                  size: 32),
+              Icon(
+                prayer.icon,
+                color: log.status == PrayerStatus.pending
+                    ? AppColors.textSecondary
+                    : log.status.color,
+                size: 32,
+              ),
               const SizedBox(width: 12),
               Expanded(
                 child: Column(
@@ -131,7 +140,7 @@ class _PrayerRow extends StatelessWidget {
           if (log.isRecorded)
             _recordedActions(context, log)
           else
-            _actionButtons(context, phase, provider, auth),
+            _actionButtons(context, phase),
         ],
       ),
     );
@@ -141,20 +150,16 @@ class _PrayerRow extends StatelessWidget {
     String text;
     switch (phase) {
       case PrayerPhase.beforeAdhan:
-        text =
-            'يتبقى ${_fmt(tl.adhan.difference(DateTime.now()))} للأذان';
+        text = 'يتبقى ${_fmt(tl.adhan.difference(DateTime.now()))} للأذان';
         break;
       case PrayerPhase.waitingForCongregation:
-        text =
-            'وقت الجماعة يفتح بعد ${_fmt(tl.congregationOpen.difference(DateTime.now()))}';
+        text = 'وقت الجماعة يفتح بعد ${_fmt(tl.congregationOpen.difference(DateTime.now()))}';
         break;
       case PrayerPhase.congregationOpen:
-        text =
-            'وقت الجماعة — يتبقى ${_fmt(tl.congregationClose.difference(DateTime.now()))}';
+        text = 'وقت الجماعة — يتبقى ${_fmt(tl.congregationClose.difference(DateTime.now()))}';
         break;
       case PrayerPhase.individualOpen:
-        text =
-            'وقت الانفراد — يتبقى ${_fmt(tl.individualClose.difference(DateTime.now()))}';
+        text = 'وقت الانفراد — يتبقى ${_fmt(tl.individualClose.difference(DateTime.now()))}';
         break;
       case PrayerPhase.qadaOpen:
         text = 'وقت القضاء — يتبقى ${_fmt(tl.qadaClose.difference(DateTime.now()))}';
@@ -188,12 +193,7 @@ class _PrayerRow extends StatelessWidget {
     return const SizedBox.shrink();
   }
 
-  Widget _actionButtons(
-    BuildContext context,
-    PrayerPhase phase,
-    PrayerProvider provider,
-    AuthProvider auth,
-  ) {
+  Widget _actionButtons(BuildContext context, PrayerPhase phase) {
     final canCongregation = phase == PrayerPhase.congregationOpen;
     final canIndividual = phase == PrayerPhase.individualOpen ||
         phase == PrayerPhase.congregationOpen;
@@ -204,8 +204,7 @@ class _PrayerRow extends StatelessWidget {
         if (canCongregation)
           Expanded(
             child: AppButton.primary(
-              onPressed: () =>
-                  _record(context, PrayerStatus.congregation),
+              onPressed: () => _record(context, PrayerStatus.congregation),
               label: 'جماعة +27',
               backgroundColor: AppColors.success,
               foregroundColor: Colors.white,
@@ -234,35 +233,48 @@ class _PrayerRow extends StatelessWidget {
           const Expanded(
             child: Text(
               'لا يمكن التسجيل الآن',
-              style:
-                  TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
             ),
           ),
       ],
     );
   }
 
+  /// FULL REWRITE: correct order of operations.
   Future<void> _record(BuildContext context, PrayerStatus status) async {
     final auth = context.read<AuthProvider>();
     final prayerProv = context.read<PrayerProvider>();
     final streakProv = context.read<StreakProvider>();
     final badgeProv = context.read<BadgeProvider>();
     final notifProv = context.read<NotificationProvider>();
+    final athkarProv = context.read<AthkarProvider>();
 
+    final userId = auth.user!.id;
+    final bonus = streakProv.bonusMultiplier;
+
+    // ── STEP 1: persist prayer (with streak bonus applied) ─────────
     final result = await prayerProv.recordPrayer(
-      userId: auth.user!.id,
+      userId: userId,
       prayer: prayer,
       status: status,
+      bonusMultiplier: bonus,
     );
 
     if (!context.mounted) return;
-
     if (!result.success) {
       AppSnackbar.error(context, result.error ?? 'فشل التسجيل');
       return;
     }
 
-    // Show animation
+    // ── STEP 2: record streak activity FIRST ────────────────────────
+    final milestone = await streakProv.recordActivity(userId: userId);
+
+    // ── STEP 3: refresh profile (DB trigger already updated iman) ───
+    await auth.refreshProfile();
+
+    if (!context.mounted) return;
+
+    // ── STEP 4: show prayer animation WITH the fresh streak ─────────
     await PrayerCompleteAnimation.show(
       context: context,
       prayer: prayer,
@@ -271,14 +283,12 @@ class _PrayerRow extends StatelessWidget {
       streak: streakProv.currentStreak,
     );
 
-    // Update streak
-    final milestone =
-        await streakProv.recordActivity(userId: auth.user!.id);
+    if (!context.mounted) return;
 
-    // Notify milestone
+    // ── STEP 5: milestone notification ──────────────────────────────
     if (milestone != null) {
       await notifProv.create(
-        userId: auth.user!.id,
+        userId: userId,
         type: 'streak_milestone',
         title: 'مواصلة $milestone يوم!',
         message: 'ما شاء الله، استمر على الطاعة!',
@@ -286,22 +296,63 @@ class _PrayerRow extends StatelessWidget {
       );
     }
 
-    // Check badges
-    final unlocked = await badgeProv.checkConditions(
-      userId: auth.user!.id,
-      context: BadgeContext(overallStreak: streakProv.currentStreak),
-    );
-
-    for (final badge in unlocked) {
-      if (!context.mounted) break;
-      await BadgeUnlockAnimation.show(context: context, badge: badge);
-      await notifProv.create(
-        userId: auth.user!.id,
-        type: 'badge_unlock',
-        title: 'ميدالية: ${badge.nameAr}',
-        message: badge.description,
-        icon: badge.icon,
+    // ── STEP 6: compute FULL badge context from server ──────────────
+    try {
+      final prayerRepo = PrayerRepository(Supabase.instance.client);
+      final recentLogs = await prayerRepo.getLogsInRange(
+        userId: userId,
+        from: DateTime.now().subtract(const Duration(days: 60)),
+        to: DateTime.now(),
       );
+
+      if (!context.mounted) return;
+
+      final mandatoryItems = athkarProv.allMandatoryItems;
+      final unlocked = await badgeProv.evaluateAndUnlock(
+        userId: userId,
+        recentLogs: recentLogs,
+        athkarItemsToday: mandatoryItems,
+        athkarCompletedToday: athkarProv.progressMapFor(mandatoryItems),
+      );
+
+      // ── STEP 7: badge animations, serial ──────────────────────────
+      for (final badge in unlocked) {
+        if (!context.mounted) break;
+        await BadgeUnlockAnimation.show(context: context, badge: badge);
+        await notifProv.create(
+          userId: userId,
+          type: 'badge_unlock',
+          title: 'ميدالية: ${badge.nameAr}',
+          message: badge.description,
+          icon: badge.icon,
+        );
+      }
+    } catch (e) {
+      // Badge evaluation failure should NEVER break prayer recording.
+      debugPrint('Badge evaluation error: $e');
+    }
+
+    if (!context.mounted) return;
+
+    // ── STEP 8: advance group challenges (non-fatal) ────────────────
+    try {
+      await ChallengeService.advanceOnPrayer(
+        userId: userId,
+        prayer: prayer.name,
+      );
+    } catch (e) {
+      debugPrint('Challenge advance error: $e');
+    }
+
+    if (!context.mounted) return;
+
+    // ── STEP 9: if user records qada but was locked, unlock ─────────
+    if (status == PrayerStatus.qada) {
+      final lock = context.read<LockProvider>();
+      if (lock.isLocked) {
+        await lock.unlock(userId);
+        await auth.refreshProfile();
+      }
     }
   }
 
@@ -317,6 +368,8 @@ class _PrayerRow extends StatelessWidget {
     if (!context.mounted) return;
 
     if (r.success) {
+      await auth.refreshProfile();
+      if (!context.mounted) return;
       AppSnackbar.success(context, 'تم قبول التوبة إن شاء الله');
     } else {
       AppSnackbar.error(context, r.error ?? 'فشل');
@@ -329,10 +382,6 @@ class _PrayerRow extends StatelessWidget {
     return '${d.inMinutes}د';
   }
 }
-
-// ═══════════════════════════════════════════════════════════════════
-// PRAYER DETAIL PAGE (opened from Home card tap)
-// ═══════════════════════════════════════════════════════════════════
 
 class PrayerDetailPage extends StatelessWidget {
   final PrayerName prayer;

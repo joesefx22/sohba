@@ -24,7 +24,18 @@ class AthkarProvider extends ChangeNotifier {
   List<AthkarCategory> get mandatoryCategories =>
       _categories.where((c) => c.isMandatory).toList();
 
-  // --- Load ---------------------------------------------------------------
+  /// All items across mandatory categories (used by BadgeEngine).
+  List<AthkarItem> get allMandatoryItems =>
+      mandatoryCategories.expand((c) => c.items).toList();
+
+  /// Map itemId → completed for the given list.
+  Map<String, bool> progressMapFor(List<AthkarItem> items) {
+    final m = <String, bool>{};
+    for (final item in items) {
+      m[item.id] = _progress[item.id]?.completed == true;
+    }
+    return m;
+  }
 
   Future<void> loadAll(String userId) async {
     _loading = true;
@@ -50,8 +61,6 @@ class AthkarProvider extends ChangeNotifier {
     }
   }
 
-  // --- Progress -----------------------------------------------------------
-
   UserAthkarProgress? progressFor(String itemId) => _progress[itemId];
 
   int completedCountIn(AthkarCategory category) {
@@ -65,8 +74,6 @@ class AthkarProvider extends ChangeNotifier {
     return completedCountIn(category) / category.items.length;
   }
 
-  /// Increment the count of a specific athkar item.
-  /// Returns true if it just became completed.
   Future<bool> incrementItem({
     required String userId,
     required AthkarItem item,
@@ -100,7 +107,6 @@ class AthkarProvider extends ChangeNotifier {
     }
   }
 
-  /// Mark an item as fully completed (jump-to-end).
   Future<void> completeItem({
     required String userId,
     required AthkarItem item,
@@ -122,7 +128,6 @@ class AthkarProvider extends ChangeNotifier {
     notifyListeners();
   }
 
-  /// Are all mandatory categories fully completed for today?
   bool get allMandatoryCompleted {
     for (final cat in mandatoryCategories) {
       if (completionFor(cat) < 1.0) return false;

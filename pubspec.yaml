@@ -38,6 +38,11 @@ dependencies:
   # ---------- Config ----------
   flutter_dotenv: ^5.1.0
 
+  # ---------- Notifications (optional, real push) ----------
+  flutter_local_notifications: ^17.0.0
+  timezone: ^0.9.4
+  just_audio: ^0.9.36   # for daily lesson playback
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

@@ -1,17 +1,15 @@
 import 'package:supabase_flutter/supabase_flutter.dart';
+import '../config/app_config.dart';
 import '../models/prayer_log.dart';
 
-/// Repository for prayer logs — the core game data.
 class PrayerRepository {
   final SupabaseClient _client;
   PrayerRepository(this._client);
 
-  /// Upsert a prayer log (idempotent per user/date/prayer).
   Future<void> upsertLog(PrayerLog log) async {
     await _client.from('prayer_logs').upsert(log.toJson());
   }
 
-  /// Get all prayer logs for a specific date.
   Future<List<PrayerLog>> getLogsForDate({
     required String userId,
     required DateTime date,
@@ -28,7 +26,6 @@ class PrayerRepository {
         .toList();
   }
 
-  /// Get logs in a range (for calendar / stats).
   Future<List<PrayerLog>> getLogsInRange({
     required String userId,
     required DateTime from,
@@ -47,7 +44,6 @@ class PrayerRepository {
         .toList();
   }
 
-  /// Mark a missed prayer as repented (tawbah).
   Future<void> markRepented({
     required String userId,
     required DateTime date,
@@ -64,7 +60,25 @@ class PrayerRepository {
         .eq('prayer', prayer.name);
   }
 
-  /// Realtime stream for today's logs.
+  /// Marks all pending prayers older than 1 day as missed.
+  /// RLS-restricted to the authenticated user.
+  /// Returns the number of rows affected.
+  Future<int> sweepMissedPrayers({required String userId}) async {
+    final cutoff = _dateOnly(DateTime.now().subtract(const Duration(days: 1)));
+    final res = await _client
+        .from('prayer_logs')
+        .update({
+          'status': 'missed',
+          'sayyiat': AppConfig.sayyiatPerMissedPrayer,
+          'recorded_at': DateTime.now().toIso8601String(),
+        })
+        .eq('user_id', userId)
+        .eq('status', 'pending')
+        .lt('date', cutoff)
+        .select('id');
+    return (res as List).length;
+  }
+
   Stream<List<PrayerLog>> streamLogsForDate({
     required String userId,
     required DateTime date,
@@ -75,9 +89,7 @@ class PrayerRepository {
         .stream(primaryKey: ['id'])
         .eq('user_id', userId)
         .eq('date', dateStr)
-        .map((rows) => rows
-            .map((r) => PrayerLog.fromJson(r))
-            .toList());
+        .map((rows) => rows.map((r) => PrayerLog.fromJson(r)).toList());
   }
 
   static String _dateOnly(DateTime d) =>

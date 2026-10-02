@@ -1,15 +1,13 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../config/app_config.dart';
 import '../models/prayer_log.dart';
 import 'adhan_service.dart';
 
-/// Manages scheduling + persistence of notification preferences.
+/// إدارة إعدادات الإشعارات + حساب جدول اليوم.
 ///
-/// NOTE: MVP uses SharedPreferences to store preferences. Actual
-/// push notifications will be wired in a future release using the
-/// `awqat` package (native scheduling on Android/iOS).
+/// ⚠️ TODO (production): اربط هذه الخدمة بـ `flutter_local_notifications`
+/// أو FCM لإرسال الإشعارات فعليًا. حاليًا نحفظ الإعدادات ونحسب الجدول فقط.
 class NotificationService {
   NotificationService._();
 
@@ -41,7 +39,6 @@ class NotificationService {
     await p.setBool(_keyAdhanEnabled, value);
   }
 
-  /// Minutes before adhan to send a reminder. 0 = at adhan time.
   static Future<int> reminderMinutes() async {
     final p = await SharedPreferences.getInstance();
     return p.getInt(_keyReminderMinutes) ?? 5;
@@ -62,7 +59,6 @@ class NotificationService {
     await p.setBool(_keyStreakReminderEnabled, value);
   }
 
-  /// Hour of day to send the streak reminder (default 21:00 = 9 PM).
   static Future<int> streakReminderHour() async {
     final p = await SharedPreferences.getInstance();
     return p.getInt(_keyStreakReminderHour) ?? 21;
@@ -75,9 +71,6 @@ class NotificationService {
 
   // ── Schedule building ──────────────────────────────────────────
 
-  /// Compute the list of scheduled notification descriptors.
-  /// Callers can persist these in SharedPreferences or feed them
-  /// to `awqat` (or `flutter_local_notifications`) once integrated.
   static List<PrayerReminder> buildRemindersForToday() {
     final reminders = <PrayerReminder>[];
     for (final prayer in PrayerName.values) {
@@ -107,7 +100,6 @@ class NotificationService {
     }
   }
 
-  /// A human-readable summary of what would be scheduled.
   static String describeSchedule() {
     final reminders = buildRemindersForToday();
     return reminders
@@ -116,14 +108,11 @@ class NotificationService {
         .join('\n');
   }
 
-  /// Debug helper.
   static void debugLogSchedule() {
-    debugPrint('NotificationService schedule for today:');
+    debugPrint('جدول إشعارات اليوم:');
     for (final r in buildRemindersForToday()) {
-      debugPrint('  ${r.prayer.arabicName} at '
-          '${AdhanService.formatTime(r.scheduledAt)}');
+      debugPrint('  ${r.prayer.arabicName} — ${AdhanService.formatTime(r.scheduledAt)}');
     }
-    debugPrint('  Adhan: ${AppConfig.appName}');
   }
 }
 

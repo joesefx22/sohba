@@ -74,6 +74,12 @@ class AppConfig {
   static const Duration qadaWindowDuration = Duration(hours: 24);
 
   // ============================================
+  // LOCK / MISSED PRAYER
+  // ============================================
+  static const int lockAfterHoursPastQada = 0; // lock immediately after qada window
+  static const String lockReopenMessage = 'رحلتك استُئنفت — تقبّل الله';
+
+  // ============================================
   // GAME ECONOMY
   // ============================================
   static const int hasanatPerCongregation = 27;
@@ -88,6 +94,20 @@ class AppConfig {
   // Conversion rates
   static const int hasanatPerIman = 100;
   static const int sayyiatPerIman = 50;
+
+  // ============================================
+  // HIMMAH (strategic currency — safe alternative to spending Iman)
+  // ============================================
+  static const int himmahProtectStreakCost = 1;
+  static const int himmahSkipOptionalCost = 2;
+  static const Map<int, int> himmahMilestones = {
+    7: 3,
+    14: 5,
+    30: 10,
+    60: 20,
+    100: 50,
+    365: 200,
+  };
 
   // ============================================
   // STREAK THRESHOLDS

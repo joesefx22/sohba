@@ -5,6 +5,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../config/app_config.dart';
 import '../models/prayer_log.dart';
 import '../repositories/prayer_repository.dart';
+import '../services/streak_service.dart';
 
 class StreakMilestone {
   final int value;
@@ -32,15 +33,10 @@ class StreakProvider extends ChangeNotifier {
   bool get loading => _loading;
 
   /// Bonus multiplier applied to hasanat.
-  double get bonusMultiplier {
-    if (_currentStreak >= 100) return 1.5;
-    if (_currentStreak >= 30) return 1.25;
-    if (_currentStreak >= 14) return 1.15;
-    if (_currentStreak >= 7) return 1.1;
-    return 1.0;
-  }
+  double get bonusMultiplier =>
+      StreakService.streakBonusMultiplier(_currentStreak);
 
-  int get bonusPercent => ((bonusMultiplier - 1) * 100).round();
+  int get bonusPercent => StreakService.streakBonusPercent(_currentStreak);
 
   int? get nextMilestone {
     for (final m in AppConfig.streakMilestones) {

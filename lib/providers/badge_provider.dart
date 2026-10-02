@@ -2,8 +2,11 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
+import '../models/athkar.dart';
 import '../models/badge.dart';
+import '../models/prayer_log.dart';
 import '../repositories/badge_repository.dart';
+import '../services/badge_engine.dart';
 
 class BadgeProvider extends ChangeNotifier {
   late final BadgeRepository _repo;
@@ -30,8 +33,6 @@ class BadgeProvider extends ChangeNotifier {
   List<Badge> byCategory(BadgeCategory category) =>
       _allBadges.where((b) => b.category == category).toList();
 
-  // --- Loading ------------------------------------------------------------
-
   Future<void> loadForUser(String userId) async {
     try {
       final results = await Future.wait([
@@ -52,10 +53,22 @@ class BadgeProvider extends ChangeNotifier {
     }
   }
 
-  // --- Unlock check -------------------------------------------------------
+  /// Evaluate badges using a full context computed from 60 days of logs +
+  /// today's athkar progress. This replaces the old inline-only evaluation.
+  Future<List<Badge>> evaluateAndUnlock({
+    required String userId,
+    required List<PrayerLog> recentLogs,
+    required List<AthkarItem> athkarItemsToday,
+    required Map<String, bool> athkarCompletedToday,
+  }) async {
+    final ctx = BadgeEngine.compute(
+      prayerLogs: recentLogs,
+      athkarItemsToday: athkarItemsToday,
+      athkarProgressToday: athkarCompletedToday,
+    );
+    return checkConditions(userId: userId, context: ctx);
+  }
 
-  /// Evaluates all badge conditions against [context].
-  /// Returns the list of badges unlocked by this call.
   Future<List<Badge>> checkConditions({
     required String userId,
     required BadgeContext context,

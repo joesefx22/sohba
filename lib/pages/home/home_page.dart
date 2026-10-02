@@ -5,11 +5,11 @@ import '../../models/prayer_log.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/prayer_provider.dart';
 import '../../providers/streak_provider.dart';
-import '../../providers/badge_provider.dart';
 import '../../providers/notification_provider.dart';
-import '../../providers/athkar_provider.dart';
 import '../../providers/group_provider.dart';
-import '../../services/prayer_engine.dart';
+import '../../providers/lock_provider.dart';
+import '../../providers/daily_lesson_provider.dart';
+import '../../providers/badge_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
@@ -19,7 +19,9 @@ import '../prayer/prayer_page.dart';
 import '../athkar/athkar_page.dart';
 import '../badges/badges_page.dart';
 import '../group/group_leaderboard_page.dart';
-import '../profile/profile_page.dart';
+import '../lock/lock_screen.dart';
+import '../lessons/daily_lesson_page.dart';
+import '../challenges/challenges_page.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -64,8 +66,7 @@ class _HomePageState extends State<HomePage> {
               _navItem(0, Icons.home_outlined, Icons.home, 'الرئيسية'),
               _navItem(1, Icons.mosque_outlined, Icons.mosque, 'الصلاة'),
               _navItem(2, Icons.menu_book_outlined, Icons.menu_book, 'الأذكار'),
-              _navItem(3, Icons.emoji_events_outlined, Icons.emoji_events,
-                  'الميداليات'),
+              _navItem(3, Icons.emoji_events_outlined, Icons.emoji_events, 'الميداليات'),
               _navItem(4, Icons.groups_outlined, Icons.groups, 'المجموعة'),
             ],
           ),
@@ -94,8 +95,7 @@ class _HomePageState extends State<HomePage> {
               child: Icon(
                 selected ? filled : outline,
                 size: 22,
-                color:
-                    selected ? Colors.white : AppColors.textSecondary,
+                color: selected ? Colors.white : AppColors.textSecondary,
               ),
             ),
             const SizedBox(height: 2),
@@ -104,8 +104,7 @@ class _HomePageState extends State<HomePage> {
               style: TextStyle(
                 fontSize: 10,
                 fontWeight: selected ? FontWeight.bold : FontWeight.normal,
-                color:
-                    selected ? AppColors.primaryStart : AppColors.textSecondary,
+                color: selected ? AppColors.primaryStart : AppColors.textSecondary,
               ),
             ),
           ],
@@ -115,27 +114,34 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-// ═══════════════════════════════════════════════════════════════════
-// DASHBOARD TAB
-// ═══════════════════════════════════════════════════════════════════
-
 class _DashboardTab extends StatelessWidget {
   const _DashboardTab();
 
   @override
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
+    final lock = context.watch<LockProvider>();
     final prayer = context.watch<PrayerProvider>();
     final streak = context.watch<StreakProvider>();
     final notifications = context.watch<NotificationProvider>();
-
+    final lesson = context.watch<DailyLessonProvider>();
     final group = context.watch<GroupProvider>().group;
     final profile = auth.profile;
+
+    // ── Lock gate ────────────────────────────────────────────────
+    // If the profile is locked, show LockScreen (isolated).
+    if (lock.isLocked) return const LockScreen();
+    // ─────────────────────────────────────────────────────────────
+
     final iman = ((profile?['iman'] ?? 0) as num).toDouble();
+    final himmah = (profile?['himmah'] ?? 0) as int;
     final totalHasanat = (profile?['total_hasanat'] ?? 0) as int;
 
-    // Find current focus prayer
     final focus = prayer.currentFocusPrayer;
+
+    // Correct level math: level 1 starts at 0 iman, level 2 at 100, etc.
+    final level = (iman / 100).floor() + 1;
+    final progressInLevel = (iman % 100) / 100.0;
 
     return SafeArea(
       child: RefreshIndicator(
@@ -145,12 +151,13 @@ class _DashboardTab extends StatelessWidget {
           await Future.wait([
             prayer.loadToday(uid),
             streak.loadForUser(uid),
+            lesson.loadForUser(uid),
+            auth.refreshProfile(),
           ]);
         },
         child: ListView(
           padding: const EdgeInsets.fromLTRB(0, 12, 0, 24),
           children: [
-            // Header
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: Row(
@@ -159,7 +166,7 @@ class _DashboardTab extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
+                        const Text(
                           'السلام عليكم،',
                           style: TextStyle(
                             fontSize: 13,
@@ -194,7 +201,7 @@ class _DashboardTab extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            // Hero stats card
+            // ── Iman card ─────────────────────────────────────────
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               child: GlassContainer(
@@ -227,10 +234,8 @@ class _DashboardTab extends StatelessWidget {
                             ),
                             child: Row(
                               children: [
-                                const Icon(
-                                    Icons.local_fire_department,
-                                    color: Colors.orange,
-                                    size: 14),
+                                const Icon(Icons.local_fire_department,
+                                    color: Colors.orange, size: 14),
                                 const SizedBox(width: 4),
                                 Text(
                                   '${streak.currentStreak}',
@@ -256,9 +261,9 @@ class _DashboardTab extends StatelessWidget {
                     ),
                     const SizedBox(height: 12),
                     ImanProgressBar(
-                      currentIman: iman - (iman.floorToDouble()),
+                      currentIman: progressInLevel * 100,
                       nextTierAt: 100,
-                      level: (iman ~/ 100) + 1,
+                      level: level,
                     ),
                     const SizedBox(height: 12),
                     Row(
@@ -286,16 +291,115 @@ class _DashboardTab extends StatelessWidget {
                 ),
               ),
             ),
+
+            // ─── NEW: Himmah + Badges tiles ──────────────────────
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _miniStat(
+                      icon: Icons.diamond_outlined,
+                      label: 'الهمّة',
+                      value: '$himmah',
+                      color: AppColors.rarityEpic,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: _miniStat(
+                      icon: Icons.emoji_events_outlined,
+                      label: 'ميداليات',
+                      value:
+                          '${context.watch<BadgeProvider>().unlockedCount}',
+                      color: AppColors.gold,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ─── NEW: Daily lesson card ──────────────────────────
+            if (lesson.lesson != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 0),
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(builder: (_) => const DailyLessonPage()),
+                  ),
+                  child: GlassContainer(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.headphones,
+                            color: AppColors.gold, size: 22),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              const Text('درس اليوم',
+                                  style: TextStyle(
+                                      fontSize: 11,
+                                      color: AppColors.textSecondary)),
+                              Text(lesson.lesson!.title,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.text)),
+                            ],
+                          ),
+                        ),
+                        Text(lesson.lesson!.durationLabel,
+                            style: const TextStyle(
+                                fontSize: 12,
+                                color: AppColors.textSecondary)),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
+            // ─── NEW: Challenges button ──────────────────────────
+            if (group != null)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                child: GestureDetector(
+                  onTap: () => Navigator.of(context).push(
+                    MaterialPageRoute(
+                        builder: (_) => const ChallengesPage()),
+                  ),
+                  child: GlassContainer(
+                    padding: const EdgeInsets.all(14),
+                    child: Row(
+                      children: [
+                        const Icon(Icons.flag,
+                            color: AppColors.teal, size: 22),
+                        const SizedBox(width: 12),
+                        const Expanded(
+                          child: Text('التحديات الجماعية',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  color: AppColors.text)),
+                        ),
+                        const Icon(Icons.chevron_left,
+                            color: AppColors.textSecondary),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+
             const SizedBox(height: 20),
 
-            // Current focus
+            // ── Focus prayer card ─────────────────────────────────
             if (focus != null)
               Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16),
                 child: _focusCard(context, focus),
               ),
 
-            // Prayers section
             const Padding(
               padding: EdgeInsets.fromLTRB(16, 20, 16, 8),
               child: Text(
@@ -405,6 +509,36 @@ class _DashboardTab extends StatelessWidget {
     );
   }
 
+  Widget _miniStat({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return GlassContainer(
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Icon(icon, color: color, size: 22),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(value,
+                  style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: color)),
+              Text(label,
+                  style: const TextStyle(
+                      fontSize: 11, color: AppColors.textSecondary)),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _focusCard(BuildContext context, PrayerName focus) {
     return GlassContainer(
       padding: const EdgeInsets.all(18),
@@ -466,7 +600,6 @@ class _DashboardTab extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────
 class _NotificationsSheet extends StatelessWidget {
   const _NotificationsSheet();
 

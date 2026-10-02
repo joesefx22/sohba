@@ -2,12 +2,10 @@ import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
-import '../config/app_config.dart';
 import '../models/prayer_log.dart';
 import '../repositories/prayer_repository.dart';
 import '../services/prayer_engine.dart';
 
-/// Result of recording a prayer — the caller uses it to trigger animations.
 class PrayerRecordResult {
   final bool success;
   final int hasanat;
@@ -40,8 +38,6 @@ class PrayerProvider extends ChangeNotifier {
   String? get error => _error;
   DateTime get todayDate => _todayDate;
 
-  /// --- Timelines ---------------------------------------------------------
-
   PrayerTimeline timelineFor(PrayerName prayer) =>
       PrayerEngine.computeTimeline(prayer: prayer, date: _todayDate);
 
@@ -50,14 +46,16 @@ class PrayerProvider extends ChangeNotifier {
     return t.phaseAt(DateTime.now());
   }
 
-  // --- Loading ------------------------------------------------------------
-
   Future<void> loadToday(String userId) async {
     _loading = true;
     _error = null;
     notifyListeners();
 
     try {
+      // 1. Sweep missed prayers from previous days
+      await _repo.sweepMissedPrayers(userId: userId);
+
+      // 2. Load today's logs
       _todayDate = DateTime.now();
       final logs = await _repo.getLogsForDate(
         userId: userId,
@@ -65,7 +63,6 @@ class PrayerProvider extends ChangeNotifier {
       );
 
       _today.clear();
-      // Fill with empty logs, then override with saved ones
       for (final p in PrayerName.values) {
         _today[p] = PrayerLog.empty(
           userId: userId,
@@ -98,17 +95,14 @@ class PrayerProvider extends ChangeNotifier {
     });
   }
 
-  // --- Recording ----------------------------------------------------------
-
-  /// Record a prayer. Returns a result the UI uses to trigger animations.
   Future<PrayerRecordResult> recordPrayer({
     required String userId,
     required PrayerName prayer,
     required PrayerStatus status,
+    double bonusMultiplier = 1.0,
   }) async {
     final now = DateTime.now();
 
-    // Validate via engine
     final error = PrayerEngine.validateStatus(
       prayer: prayer,
       status: status,
@@ -119,19 +113,20 @@ class PrayerProvider extends ChangeNotifier {
       return PrayerRecordResult(success: false, error: error);
     }
 
-    // Compute hasanat
-    final hasanat = PrayerEngine.hasanatFor(
+    final hasanat = PrayerEngine.hasanatWithBonus(
       prayer: prayer,
       status: status,
       now: now,
       date: _todayDate,
+      bonusMultiplier: bonusMultiplier,
     );
 
-    final newLog = (_today[prayer] ?? PrayerLog.empty(
-      userId: userId,
-      date: _todayDate,
-      prayer: prayer,
-    ))
+    final newLog = (_today[prayer] ??
+            PrayerLog.empty(
+              userId: userId,
+              date: _todayDate,
+              prayer: prayer,
+            ))
         .copyWith(
       status: status,
       hasanat: hasanat,
@@ -144,34 +139,22 @@ class PrayerProvider extends ChangeNotifier {
       await _repo.upsertLog(newLog);
       _today[prayer] = newLog;
       notifyListeners();
-
-      return PrayerRecordResult(
-        success: true,
-        hasanat: hasanat,
-        log: newLog,
-      );
+      return PrayerRecordResult(success: true, hasanat: hasanat, log: newLog);
     } catch (e) {
       return PrayerRecordResult(success: false, error: e.toString());
     }
   }
 
-  /// Mark a missed prayer as repented.
   Future<PrayerRecordResult> markRepented({
     required String userId,
     required PrayerName prayer,
   }) async {
     final current = _today[prayer];
     if (current == null) {
-      return const PrayerRecordResult(
-        success: false,
-        error: 'لا يوجد سجل للصلاة',
-      );
+      return const PrayerRecordResult(success: false, error: 'لا يوجد سجل للصلاة');
     }
     if (!current.hasUnrepentedSayyiat) {
-      return const PrayerRecordResult(
-        success: false,
-        error: 'لا توجد سيئات للتوبة',
-      );
+      return const PrayerRecordResult(success: false, error: 'لا توجد سيئات للتوبة');
     }
 
     try {
@@ -193,8 +176,6 @@ class PrayerProvider extends ChangeNotifier {
     }
   }
 
-  // --- Stats helpers ------------------------------------------------------
-
   int get todayHasanat =>
       _today.values.fold(0, (sum, log) => sum + log.hasanat);
 
@@ -204,17 +185,16 @@ class PrayerProvider extends ChangeNotifier {
   double get todayImanGain =>
       _today.values.fold(0.0, (sum, log) => sum + log.netImanEffect);
 
-  /// The prayer the user should act on right now.
   PrayerName? get currentFocusPrayer {
     final now = DateTime.now();
     for (final p in PrayerName.values) {
       final phase = phaseFor(p);
       if (phase == PrayerPhase.congregationOpen ||
           phase == PrayerPhase.individualOpen) {
-        if (!_today[p]!.isRecorded) return p;
+        final log = _today[p];
+        if (log == null || !log.isRecorded) return p;
       }
     }
-    // Fall back to next upcoming
     return null;
   }
 

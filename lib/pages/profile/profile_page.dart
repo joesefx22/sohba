@@ -8,7 +8,9 @@ import '../../providers/badge_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
-import '../../widgets/app_button.dart';
+import '../admin/admin_dashboard_page.dart';
+import '../admin/seed_athkar_page.dart';
+import '../settings/settings_page.dart';
 
 class ProfilePage extends StatelessWidget {
   const ProfilePage({super.key});
@@ -34,7 +36,6 @@ class ProfilePage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            // Avatar + name
             Center(
               child: Column(
                 children: [
@@ -72,24 +73,23 @@ class ProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Stats
             Row(
               children: [
                 Expanded(
-                    child: _statCard('إيمان', iman.toStringAsFixed(1),
-                        AppColors.gold)),
+                  child: _statCard('إيمان', iman.toStringAsFixed(1), AppColors.gold),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
-                    child: _statCard(
-                        'حسنات', '$hasanat', AppColors.teal)),
+                  child: _statCard('حسنات', '$hasanat', AppColors.teal),
+                ),
               ],
             ),
             const SizedBox(height: 10),
             Row(
               children: [
                 Expanded(
-                    child: _statCard(
-                        'مواصلة', '${streak.currentStreak}', Colors.orange)),
+                  child: _statCard('مواصلة', '${streak.currentStreak}', Colors.orange),
+                ),
                 const SizedBox(width: 10),
                 Expanded(
                   child: _statCard(
@@ -102,7 +102,21 @@ class ProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            // Settings items
+            _item(Icons.settings, 'الإعدادات', AppColors.teal, () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SettingsPage()),
+              );
+            }),
+            _item(Icons.admin_panel_settings, 'لوحة الإدارة', AppColors.gold, () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
+              );
+            }),
+            _item(Icons.cloud_upload, 'رفع الأذكار (أدمن)', AppColors.rarityEpic, () {
+              Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const SeedAthkarPage()),
+              );
+            }),
             _item(Icons.logout, 'تسجيل الخروج', AppColors.error, () async {
               final confirm = await showDialog<bool>(
                 context: context,
@@ -179,19 +193,3 @@ class ProfilePage extends StatelessWidget {
     );
   }
 }
-
-_item(Icons.settings, 'الإعدادات', AppColors.teal, () {
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const SettingsPage()),
-  );
-}),
-_item(Icons.admin_panel_settings, 'لوحة الإدارة', AppColors.gold, () {
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
-  );
-}),
-_item(Icons.cloud_upload, 'رفع الأذكار (أدمن)', AppColors.rarityEpic, () {
-  Navigator.of(context).push(
-    MaterialPageRoute(builder: (_) => const SeedAthkarPage()),
-  );
-}),

@@ -11,14 +11,17 @@ import 'providers/athkar_provider.dart';
 import 'providers/badge_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/streak_provider.dart';
+import 'providers/lock_provider.dart';
+import 'providers/daily_lesson_provider.dart';
+import 'providers/challenge_provider.dart';
 import 'pages/splash_page.dart';
+import 'services/push_notification_service.dart';
 import 'widgets/error_boundary.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   await EnvConfig.load();
-
   if (!EnvConfig.isConfigured) {
     runApp(const _ConfigErrorApp());
     return;
@@ -28,6 +31,8 @@ Future<void> main() async {
     url: EnvConfig.supabaseUrl,
     anonKey: EnvConfig.supabaseAnonKey,
   );
+
+  await PushNotificationService.init();
 
   runApp(const SohbaApp());
 }
@@ -47,6 +52,9 @@ class SohbaApp extends StatelessWidget {
           ChangeNotifierProvider(create: (_) => BadgeProvider()),
           ChangeNotifierProvider(create: (_) => StreakProvider()),
           ChangeNotifierProvider(create: (_) => NotificationProvider()),
+          ChangeNotifierProvider(create: (_) => LockProvider()),
+          ChangeNotifierProvider(create: (_) => DailyLessonProvider()),
+          ChangeNotifierProvider(create: (_) => ChallengeProvider()),
         ],
         child: MaterialApp(
           title: 'صحبة',
@@ -70,9 +78,7 @@ class SohbaApp extends StatelessWidget {
           supportedLocales: const [Locale('ar'), Locale('en')],
           locale: const Locale('ar'),
           home: const SplashPage(),
-          routes: {
-            '/splash': (_) => const SplashPage(),
-          },
+          routes: {'/splash': (_) => const SplashPage()},
         ),
       ),
     );
@@ -81,7 +87,6 @@ class SohbaApp extends StatelessWidget {
 
 class _ConfigErrorApp extends StatelessWidget {
   const _ConfigErrorApp();
-
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
@@ -94,20 +99,16 @@ class _ConfigErrorApp extends StatelessWidget {
             child: Column(
               mainAxisSize: MainAxisSize.min,
               children: const [
-                Icon(Icons.error_outline,
-                    size: 64, color: Color(0xFFEF4444)),
+                Icon(Icons.error_outline, size: 64, color: Color(0xFFEF4444)),
                 SizedBox(height: 16),
-                Text(
-                  'إعدادات ناقصة',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                Text('إعدادات ناقصة',
+                    style: TextStyle(
+                        fontSize: 22,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white)),
                 SizedBox(height: 12),
                 Text(
-                  'تأكد من وجود ملف .env فيه SUPABASE_URL و SUPABASE_ANON_KEY',
+                  'تأكد من وجود .env فيه SUPABASE_URL و SUPABASE_ANON_KEY',
                   textAlign: TextAlign.center,
                   style: TextStyle(color: Colors.white70, fontSize: 14),
                 ),
