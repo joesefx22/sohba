@@ -5,7 +5,6 @@ import '../../providers/auth_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/glass_container.dart';
-import '../../widgets/error_state.dart';
 
 class GroupLeaderboardPage extends StatelessWidget {
   const GroupLeaderboardPage({super.key});

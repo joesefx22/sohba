@@ -34,10 +34,21 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _route() async {
+    // Capture all providers BEFORE any await
+    final auth = context.read<AuthProvider>();
+    final streakProvider = context.read<StreakProvider>();
+    final groupProvider = context.read<GroupProvider>();
+    final prayerProvider = context.read<PrayerProvider>();
+    final badgeProvider = context.read<BadgeProvider>();
+    final notificationProvider = context.read<NotificationProvider>();
+    final athkarProvider = context.read<AthkarProvider>();
+    final lessonProvider = context.read<DailyLessonProvider>();
+    final lockProvider = context.read<LockProvider>();
+    final challengeProvider = context.read<ChallengeProvider>();
+
     final loc = await LocationService.current();
     AdhanService.setLocation(loc.lat, loc.lng);
 
-    final auth = context.read<AuthProvider>();
     for (int i = 0; i < 20 && auth.status == AuthStatus.unknown; i++) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
@@ -51,11 +62,10 @@ class _SplashPageState extends State<SplashPage> {
 
     final userId = auth.user!.id;
 
-    // Run daily maintenance (sweep missed prayers + detect streak loss) FIRST
     try {
       await SchedulerService.runDailyMaintenance(
         userId: userId,
-        streakProvider: context.read<StreakProvider>(),
+        streakProvider: streakProvider,
       );
     } catch (e) {
       debugPrint('SchedulerService error: $e');
@@ -63,39 +73,32 @@ class _SplashPageState extends State<SplashPage> {
 
     if (!mounted) return;
 
-    // Then load everything in parallel
     await Future.wait([
-      context.read<GroupProvider>().loadForUser(userId),
-      context.read<PrayerProvider>().loadToday(userId),
-      context.read<BadgeProvider>().loadForUser(userId),
-      context.read<StreakProvider>().loadForUser(userId),
-      context.read<NotificationProvider>().loadForUser(userId),
-      context.read<AthkarProvider>().loadAll(userId),
+      groupProvider.loadForUser(userId),
+      prayerProvider.loadToday(userId),
+      badgeProvider.loadForUser(userId),
+      streakProvider.loadForUser(userId),
+      notificationProvider.loadForUser(userId),
+      athkarProvider.loadAll(userId),
       auth.refreshProfile(),
     ]);
 
     if (!mounted) return;
 
-    // Sync lock state from freshly-refreshed profile
-    context.read<LockProvider>().syncFromProfile(auth.profile);
+    lockProvider.syncFromProfile(auth.profile);
 
-    // Load daily lesson + group challenges (if in a group)
-    await Future.wait([
-      context.read<DailyLessonProvider>().loadForUser(userId),
-      if (context.read<GroupProvider>().group != null)
-        context.read<ChallengeProvider>().loadForGroup(
-              context.read<GroupProvider>().group!['id'] as String,
-            ),
-    ]);
+    await lessonProvider.loadForUser(userId);
+    final g = groupProvider.group;
+    if (g != null) {
+      await challengeProvider.loadForGroup(g['id'] as String);
+    }
 
     if (!mounted) return;
 
-    final lock = context.read<LockProvider>();
-    final group = context.read<GroupProvider>();
-    if (lock.isLocked) {
-      _go(const HomePage()); // LockScreen will gate inside HomePage
+    if (lockProvider.isLocked) {
+      _go(const HomePage());
     } else {
-      _go(group.hasGroup ? const HomePage() : const JoinGroupPage());
+      _go(groupProvider.hasGroup ? const HomePage() : const JoinGroupPage());
     }
   }
 

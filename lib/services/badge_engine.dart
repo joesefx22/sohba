@@ -53,8 +53,8 @@ class BadgeEngine {
       byDate: byDate,
     );
 
-    // 3. Qiyam al-layl streak — detected by fajr congregation + isha congregation
-    //    on the SAME day (a proxy for "woke up for qiyam").
+    // 3. Qiyam al-layl streak — detected by isha congregation
+    //    (a proxy for "woke up for qiyam").
     final qiyamStreak = _consecutiveStreak(
       sortedDays,
       todayDate,
@@ -63,9 +63,7 @@ class BadgeEngine {
       byDate: byDate,
     );
 
-    // 4. Athkar streak — how many consecutive days all mandatory items done.
-    //    We only know today's athkar here, so we approximate with a
-    //    conservative value that grows when today is complete.
+    // 4. Athkar streak — conservative value from today only.
     final athkarCompleteToday = athkarItemsToday.isNotEmpty &&
         athkarItemsToday.every((i) => athkarProgressToday[i.id] == true);
     final athkarStreak = athkarCompleteToday ? 1 : 0;
@@ -94,8 +92,11 @@ class BadgeEngine {
   }
 
   /// Count consecutive days from [today] backwards where the
-  /// predicate holds for the given prayer (or for ALL 5 prayers
-  /// if [requireAllPrayers] is true).
+  /// predicate holds.
+  ///
+  /// - If [requireAllPrayers] is true → ALL 5 prayers must match.
+  /// - Else if [prayer] is provided → only that prayer must match.
+  /// - Else → ANY prayer in the day must match (used for overall streak).
   static int _consecutiveStreak(
     List<DateTime> sortedDays,
     DateTime today,
@@ -123,9 +124,12 @@ class BadgeEngine {
           final log = dayMap[p];
           return log != null && predicate(log);
         });
-      } else {
-        final log = prayer != null ? dayMap[prayer] : null;
+      } else if (prayer != null) {
+        final log = dayMap[prayer];
         dayQualifies = log != null && predicate(log);
+      } else {
+        // FIX: no specific prayer requested — check if ANY prayer matches
+        dayQualifies = dayMap.values.any(predicate);
       }
 
       if (!dayQualifies) break;

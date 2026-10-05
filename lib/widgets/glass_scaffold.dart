@@ -1,13 +1,8 @@
 import 'package:flutter/material.dart';
 
 import '../services/background_service.dart';
+import '../theme/app_colors.dart';
 
-/// A scaffold that displays a fullscreen background image with a dark gradient
-/// overlay, providing the foundation for the frosted-glass UI.
-///
-/// Use this in place of [Scaffold] on pages that should have the glass effect.
-/// Child widgets can use [GlassContainer] to get frosted-glass cards on top of
-/// the background.
 class GlassScaffold extends StatelessWidget {
   const GlassScaffold({
     super.key,
@@ -24,6 +19,9 @@ class GlassScaffold extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bg = BackgroundService().currentBackground;
+    final hasBg = bg.isNotEmpty;
+
     return Scaffold(
       extendBody: true,
       extendBodyBehindAppBar: true,
@@ -33,12 +31,15 @@ class GlassScaffold extends StatelessWidget {
       floatingActionButton: floatingActionButton,
       body: Stack(
         children: [
-          // Layer 1: Fullscreen background image
+          // Layer 1: Background (image or gradient fallback)
           SizedBox.expand(
-            child: Image.asset(
-              BackgroundService().currentBackground,
-              fit: BoxFit.cover,
-            ),
+            child: hasBg
+                ? Image.asset(bg, fit: BoxFit.cover)
+                : DecoratedBox(
+                    decoration: BoxDecoration(
+                      gradient: AppColors.backgroundLinearGradient,
+                    ),
+                  ),
           ),
           // Layer 2: Dark gradient overlay
           SizedBox.expand(
@@ -55,7 +56,7 @@ class GlassScaffold extends StatelessWidget {
               ),
             ),
           ),
-          // Layer 3: Actual page content
+          // Layer 3: Content
           body,
         ],
       ),

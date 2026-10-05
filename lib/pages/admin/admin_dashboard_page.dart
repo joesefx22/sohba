@@ -6,7 +6,6 @@ import '../../providers/group_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
-import '../../widgets/error_state.dart';
 
 class AdminDashboardPage extends StatelessWidget {
   const AdminDashboardPage({super.key});

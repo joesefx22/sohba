@@ -41,7 +41,7 @@ dependencies:
   # ---------- Notifications (optional, real push) ----------
   flutter_local_notifications: ^17.0.0
   timezone: ^0.9.4
-  just_audio: ^0.9.36   # for daily lesson playback
+  just_audio: ^0.9.36
 
 dev_dependencies:
   flutter_test:
@@ -52,6 +52,5 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/backgrounds/
     - assets/athkar/
     - .env
