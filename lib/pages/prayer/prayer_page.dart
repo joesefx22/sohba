@@ -15,6 +15,7 @@ import '../../services/prayer_engine.dart';
 import '../../services/adhan_service.dart';
 import '../../services/challenge_service.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/prayer_complete_animation.dart';
 import '../../widgets/badge_unlock_animation.dart';
@@ -37,19 +38,9 @@ class PrayerPage extends StatelessWidget {
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              const Text(
-                'الصلاة',
-                style: TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.text,
-                ),
-              ),
+              Text('الصلاة', style: AppText.heading),
               const SizedBox(height: 4),
-              const Text(
-                'سجّل صلاتك في الوقت المناسب',
-                style: TextStyle(color: AppColors.textSecondary),
-              ),
+              Text('سجّل صلاتك في الوقت المناسب', style: AppText.caption),
               const SizedBox(height: 20),
               ...PrayerName.values.map((p) => _PrayerRow(prayer: p)),
             ],
@@ -99,7 +90,7 @@ class _PrayerRow extends StatelessWidget {
                   children: [
                     Text(
                       prayer.arabicName,
-                      style: const TextStyle(
+                      style: AppText.body.copyWith(
                         fontSize: 20,
                         fontWeight: FontWeight.bold,
                         color: AppColors.text,
@@ -107,10 +98,7 @@ class _PrayerRow extends StatelessWidget {
                     ),
                     Text(
                       'الأذان: ${AdhanService.formatTime(timeline.adhan)}',
-                      style: const TextStyle(
-                        fontSize: 12,
-                        color: AppColors.textSecondary,
-                      ),
+                      style: AppText.caption,
                     ),
                   ],
                 ),
@@ -168,10 +156,7 @@ class _PrayerRow extends StatelessWidget {
         text = 'فاتت الصلاة — يمكنك التوبة والقضاء';
         break;
     }
-    return Text(
-      text,
-      style: const TextStyle(fontSize: 12, color: AppColors.textSecondary),
-    );
+    return Text(text, style: AppText.caption);
   }
 
   Widget _recordedActions(BuildContext context, PrayerLog log) {
@@ -183,7 +168,7 @@ class _PrayerRow extends StatelessWidget {
               onPressed: () => _markRepented(context),
               label: 'توبة',
               icon: Icons.replay,
-              backgroundColor: AppColors.teal,
+              backgroundColor: AppColors.mint,
               foregroundColor: Colors.white,
             ),
           ),
@@ -206,7 +191,7 @@ class _PrayerRow extends StatelessWidget {
             child: AppButton.primary(
               onPressed: () => _record(context, PrayerStatus.congregation),
               label: 'جماعة +27',
-              backgroundColor: AppColors.success,
+              backgroundColor: AppColors.emerald,
               foregroundColor: Colors.white,
             ),
           ),
@@ -216,7 +201,7 @@ class _PrayerRow extends StatelessWidget {
             child: AppButton.primary(
               onPressed: () => _record(context, PrayerStatus.individual),
               label: 'منفردًا +1',
-              backgroundColor: AppColors.rarityRare,
+              backgroundColor: AppColors.iman,
               foregroundColor: Colors.white,
             ),
           ),
@@ -230,10 +215,10 @@ class _PrayerRow extends StatelessWidget {
             ),
           ),
         if (!canCongregation && !canIndividual && !canQada)
-          const Expanded(
+          Expanded(
             child: Text(
               'لا يمكن التسجيل الآن',
-              style: TextStyle(color: AppColors.textSecondary, fontSize: 13),
+              style: AppText.caption,
             ),
           ),
       ],
@@ -390,7 +375,7 @@ class PrayerDetailPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppColors.backgroundStart,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(prayer.arabicName),
         backgroundColor: Colors.transparent,

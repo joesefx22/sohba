@@ -6,6 +6,7 @@ import '../../services/location_service.dart';
 import '../../services/notification_service.dart';
 import '../../services/prayer_engine.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 import '../../widgets/error_state.dart';
@@ -52,7 +53,8 @@ class _SettingsPageState extends State<SettingsPage> {
       body: SafeArea(
         child: _loading
             ? const Center(
-                child: CircularProgressIndicator(color: AppColors.teal))
+                child: CircularProgressIndicator(color: AppColors.mint),
+              )
             : ListView(
                 padding: const EdgeInsets.all(16),
                 children: [
@@ -137,7 +139,7 @@ class _SettingsPageState extends State<SettingsPage> {
         style: const TextStyle(
           fontSize: 13,
           fontWeight: FontWeight.bold,
-          color: AppColors.gold,
+          color: AppColors.goldBright,
           letterSpacing: 1,
         ),
       ),
@@ -156,12 +158,10 @@ class _SettingsPageState extends State<SettingsPage> {
         title: Text(title,
             style: const TextStyle(
                 color: AppColors.text, fontWeight: FontWeight.w500)),
-        subtitle: Text(subtitle,
-            style: const TextStyle(
-                color: AppColors.textSecondary, fontSize: 12)),
+        subtitle: Text(subtitle, style: AppText.caption),
         value: value,
         onChanged: onChange,
-        activeThumbColor: AppColors.teal,
+        activeThumbColor: AppColors.emerald,
       ),
     );
   }
@@ -175,15 +175,12 @@ class _SettingsPageState extends State<SettingsPage> {
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
-        leading: Icon(icon, color: AppColors.teal),
+        leading: Icon(icon, color: AppColors.mint),
         title: Text(title,
             style: const TextStyle(
                 color: AppColors.text, fontWeight: FontWeight.w500)),
-        subtitle: Text(subtitle,
-            style: const TextStyle(
-                color: AppColors.textSecondary, fontSize: 12)),
-        trailing:
-            onTap != null ? const Icon(Icons.chevron_left) : null,
+        subtitle: Text(subtitle, style: AppText.caption),
+        trailing: onTap != null ? const Icon(Icons.chevron_left) : null,
         onTap: onTap,
       ),
     );
@@ -199,7 +196,7 @@ class _SettingsPageState extends State<SettingsPage> {
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Row(
               children: [
-                Icon(e.key.icon, size: 18, color: AppColors.teal),
+                Icon(e.key.icon, size: 18, color: AppColors.mint),
                 const SizedBox(width: 10),
                 Text(e.key.arabicName,
                     style: const TextStyle(color: AppColors.text)),
@@ -234,7 +231,7 @@ class _SettingsPageState extends State<SettingsPage> {
                 style: const TextStyle(color: AppColors.text)),
             onTap: () => Navigator.pop(context, c),
             selected: c.$1 == _city,
-            selectedTileColor: AppColors.teal.withAlpha(30),
+            selectedTileColor: AppColors.mint.withAlpha(30),
           );
         }).toList(),
       ),
@@ -270,7 +267,7 @@ class _SettingsPageState extends State<SettingsPage> {
             title: Text(label,
                 style: const TextStyle(color: AppColors.text)),
             selected: m == _reminderMinutes,
-            selectedTileColor: AppColors.teal.withAlpha(30),
+            selectedTileColor: AppColors.mint.withAlpha(30),
             onTap: () => Navigator.pop(context, m),
           );
         }).toList(),

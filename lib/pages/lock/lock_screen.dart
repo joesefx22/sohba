@@ -9,7 +9,6 @@ import '../../theme/app_colors.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 
-/// Full-screen replacement shown when the user is in "lock" state.
 class LockScreen extends StatelessWidget {
   const LockScreen({super.key});
 
@@ -17,7 +16,6 @@ class LockScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     final lock = context.watch<LockProvider>();
     final auth = context.watch<AuthProvider>();
-    final prayer = context.watch<PrayerProvider>();
 
     final prayerName = lock.state.prayer ?? '';
     final prayerEnum = PrayerName.values.firstWhere(
@@ -59,13 +57,14 @@ class LockScreen extends StatelessWidget {
                   Container(
                     padding: const EdgeInsets.all(16),
                     decoration: BoxDecoration(
-                      color: Colors.black.withAlpha(80),
+                      color: Colors.black.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: AppColors.warning.withAlpha(80)),
+                      border: Border.all(
+                          color: AppColors.warning.withValues(alpha: 0.3)),
                     ),
-                    child: Column(
+                    child: const Column(
                       children: [
-                        const Text(
+                        Text(
                           'هل صليت الصلاة؟',
                           style: TextStyle(
                             fontSize: 16,
@@ -73,8 +72,8 @@ class LockScreen extends StatelessWidget {
                             color: AppColors.gold,
                           ),
                         ),
-                        const SizedBox(height: 8),
-                        const Text(
+                        SizedBox(height: 8),
+                        Text(
                           'إن كنت صليتها قضاءً، اضغط للاستمرار. '
                           'ستُسجَّل توبة ويُعاد فتح رحلتك.',
                           style: TextStyle(
@@ -94,7 +93,7 @@ class LockScreen extends StatelessWidget {
                       icon: const Icon(Icons.check),
                       label: const Text('نعم، صليتها — افتح رحلتي'),
                       style: FilledButton.styleFrom(
-                        backgroundColor: AppColors.success,
+                        backgroundColor: AppColors.emerald,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 16),
                       ),
@@ -118,12 +117,13 @@ class LockScreen extends StatelessWidget {
   }
 
   Future<void> _confirmPrayed(BuildContext context) async {
-    final userId = context.read<AuthProvider>().user!.id;
+    final auth = context.read<AuthProvider>();
     final lock = context.read<LockProvider>();
     final prayer = context.read<PrayerProvider>();
 
-    // Mark the missed prayer as repented + record qada
+    final userId = auth.user!.id;
     final p = lock.state.prayer;
+
     if (p != null) {
       final pe = PrayerName.values.firstWhere(
         (e) => e.name == p,
@@ -138,6 +138,6 @@ class LockScreen extends StatelessWidget {
     }
 
     await lock.unlock(userId);
-    await context.read<AuthProvider>().refreshProfile();
+    await auth.refreshProfile();
   }
 }

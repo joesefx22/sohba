@@ -65,6 +65,9 @@ class ChallengeService {
 
   /// Called after a prayer is recorded to advance any active challenges
   /// the user participates in.
+  ///
+  /// NOTE: race-condition-safe increment is delegated to a future
+  /// `advance_challenge` RPC. For MVP, this is best-effort.
   static Future<void> advanceOnPrayer({
     required String userId,
     required String prayer,
@@ -73,7 +76,6 @@ class ChallengeService {
     final todayStr =
         '${today.year}-${today.month.toString().padLeft(2, '0')}-${today.day.toString().padLeft(2, '0')}';
 
-    // Get active challenges I'm in
     final res = await Supabase.instance.client
         .from('challenge_participants')
         .select('challenge_id, challenges!inner(type, ends_at, target_days)')
@@ -91,8 +93,6 @@ class ChallengeService {
       if (type == 'all_prayers') qualifies = true;
       if (!qualifies) continue;
 
-      await Supabase.instance.client.rpc('noop'); // placeholder for atomic inc
-      // Simple increment (race conditions acceptable for MVP)
       final p = await Supabase.instance.client
           .from('challenge_participants')
           .select('progress')

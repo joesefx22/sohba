@@ -1,88 +1,106 @@
 import 'package:flutter/material.dart';
 
-/// Sohba — Islamic-themed color palette
+/// Sohba design tokens.
+/// Gold = important things only (not every icon/number).
 class AppColors {
   AppColors._();
 
   // ============================================
-  // PRIMARY — Deep Islamic Green
+  // Backgrounds & surfaces
   // ============================================
-  static const Color primaryStart = Color(0xFF198754);
-  static const Color primaryEnd = Color(0xFF0F5132);
-  static const List<Color> primaryGradient = [primaryStart, primaryEnd];
+  static const background          = Color(0xFF071612);
+  static const backgroundSecondary = Color(0xFF0B211A);
+  static const surface             = Color(0xFF102A21);
+  static const surfaceElevated     = Color(0xFF15352A);
 
   // ============================================
-  // BACKGROUND — Dark green-teal
+  // Brand
   // ============================================
-  static const Color backgroundStart = Color(0xFF0A1F1A);
-  static const Color backgroundEnd = Color(0xFF142B25);
-  static const List<Color> backgroundGradient = [backgroundStart, backgroundEnd];
+  static const emerald    = Color(0xFF35C98A);
+  static const mint       = Color(0xFF6DE7B0);
+  static const gold       = Color(0xFFD8B65A);
+  static const goldBright = Color(0xFFF0D37A);
+  static const iman       = Color(0xFF5DD6D0);
 
   // ============================================
-  // SURFACE
+  // Text
   // ============================================
-  static const Color surface = Color(0xFF1E3A32);
-  static const Color surfaceElevated = Color(0xFF2A4A40);
+  static const text          = Color(0xFFF5F7F4);
+  static const textSecondary = Color(0xFF9EAEA7);
 
   // ============================================
-  // ACCENT — Traditional Gold
+  // Feedback
   // ============================================
-  static const Color gold = Color(0xFFD4AF37);
-  static const Color goldBright = Color(0xFFF4D03F);
+  static const error   = Color(0xFFD96B6B);
+  static const warning = Color(0xFFE0A458);
+  static const streak  = Color(0xFFE88B4D);
 
   // ============================================
-  // TEXT
+  // Rarity — badges only
   // ============================================
-  static const Color text = Color(0xFFF5F5F0);
-  static const Color textSecondary = Color(0xFFA8B5B0);
+  static const rarityCommon    = Color(0xFFB8B8B8);
+  static const rarityRare      = Color(0xFF5B9BD5);
+  static const rarityEpic      = Color(0xFF9B7BD5);
+  static const rarityLegendary = gold;
 
   // ============================================
-  // RARITY (mapped to spiritual significance)
+  // Gradients
   // ============================================
-  static const Color rarityCommon = Color(0xFFB8B8B8);
-  static const Color rarityRare = Color(0xFF4A9DFF);
-  static const Color rarityEpic = Color(0xFFA855F7);
-  static const Color rarityLegendary = Color(0xFFD4AF37);
+  static const progressGradient = LinearGradient(colors: [emerald, mint]);
+  static const goldGradient     = LinearGradient(colors: [gold, goldBright]);
+  static const backgroundLinearGradient = LinearGradient(
+    colors: [background, backgroundSecondary],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+  );
 
   // ============================================
-  // SEMANTIC
+  // 🔻 BACKWARD-COMPAT ALIASES (deprecated)
   // ============================================
-  static const Color teal = Color(0xFF2ECC71);
-  static const Color success = Color(0xFF198754);
-  static const Color error = Color(0xFFEF4444);
-  static const Color warning = Color(0xFFF59E0B);
+  // Legacy code still uses these; remove once all callers migrate.
+
+  @Deprecated('Use AppColors.emerald instead')
+  static const Color primaryStart = emerald;
+
+  @Deprecated('Use AppColors.mint instead')
+  static const Color primaryEnd = mint;
+
+  @Deprecated('Use AppColors.mint instead')
+  static const Color teal = mint;
+
+  @Deprecated('Use AppColors.emerald instead')
+  static const Color success = emerald;
+
+  @Deprecated('Use AppColors.background instead')
+  static const Color backgroundStart = background;
+
+  @Deprecated('Use AppColors.backgroundSecondary instead')
+  static const Color backgroundEnd = backgroundSecondary;
+
+  @Deprecated('Use AppColors.iman instead')
+  static const Color rarityRareAlias = iman;
+
+  @Deprecated('Use AppColors.progressGradient.colors instead')
+  static const List<Color> primaryGradient = [emerald, mint];
+
+  @Deprecated('Use AppColors.backgroundLinearGradient.colors instead')
+  static const List<Color> backgroundGradient = [background, backgroundSecondary];
+
+  @Deprecated('Use AppColors.progressGradient instead')
+  static LinearGradient get primaryLinearGradient => progressGradient;
+
+  @Deprecated('Use AppColors.goldGradient instead')
+  static LinearGradient get goldLinearGradient => goldGradient;
 
   // ============================================
-  // GRADIENTS
+  // Helpers
   // ============================================
-  static LinearGradient get primaryLinearGradient => const LinearGradient(
-        colors: primaryGradient,
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-
-  static LinearGradient get backgroundLinearGradient => const LinearGradient(
-        colors: backgroundGradient,
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-      );
-
-  static LinearGradient get goldLinearGradient => const LinearGradient(
-        colors: [goldBright, gold],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
-
   static Color getRarityColor(String rarity) {
     switch (rarity.toLowerCase()) {
-      case 'legendary':
-        return rarityLegendary;
-      case 'epic':
-        return rarityEpic;
-      case 'rare':
-        return rarityRare;
-      default:
-        return rarityCommon;
+      case 'legendary': return rarityLegendary;
+      case 'epic':      return rarityEpic;
+      case 'rare':      return rarityRare;
+      default:          return rarityCommon;
     }
   }
 }

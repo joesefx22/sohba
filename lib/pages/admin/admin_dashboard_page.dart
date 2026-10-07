@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 
@@ -27,12 +28,12 @@ class AdminDashboardPage extends StatelessWidget {
           backgroundColor: Colors.transparent,
           elevation: 0,
         ),
-        body: const Center(
+        body: Center(
           child: Padding(
-            padding: EdgeInsets.all(32),
+            padding: const EdgeInsets.all(32),
             child: Text(
               'هذه الصفحة متاحة لمشرف المجموعة فقط',
-              style: TextStyle(color: AppColors.textSecondary),
+              style: AppText.caption,
               textAlign: TextAlign.center,
             ),
           ),
@@ -77,19 +78,12 @@ class AdminDashboardPage extends StatelessWidget {
               children: [
                 Text(
                   group.group?['name'] ?? 'المجموعة',
-                  style: const TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.text,
-                  ),
+                  style: AppText.section.copyWith(fontSize: 20),
                 ),
                 const SizedBox(height: 4),
                 Text(
                   '${group.members.length} عضو',
-                  style: const TextStyle(
-                    color: AppColors.textSecondary,
-                    fontSize: 13,
-                  ),
+                  style: AppText.caption.copyWith(fontSize: 13),
                 ),
               ],
             ),
@@ -104,7 +98,8 @@ class AdminDashboardPage extends StatelessWidget {
       0,
       (s, m) => s + ((m['profiles']?['iman'] ?? 0) as num).toDouble(),
     );
-    final avgIman = group.members.isEmpty ? 0 : totalIman / group.members.length;
+    final avgIman =
+        group.members.isEmpty ? 0 : totalIman / group.members.length;
     final activeStreaks = group.members
         .where((m) => ((m['profiles']?['current_streak'] ?? 0) as num) > 0)
         .length;
@@ -114,13 +109,9 @@ class AdminDashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
+          Text(
             'إحصائيات المجموعة',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.text,
-            ),
+            style: AppText.subtitle,
           ),
           const SizedBox(height: 14),
           Row(
@@ -137,7 +128,7 @@ class AdminDashboardPage extends StatelessWidget {
                 child: _stat(
                   'متوسط الإيمان',
                   avgIman.toStringAsFixed(1),
-                  AppColors.teal,
+                  AppColors.mint,
                 ),
               ),
             ],
@@ -157,7 +148,7 @@ class AdminDashboardPage extends StatelessWidget {
                 child: _stat(
                   'الحالة',
                   'نشطة',
-                  AppColors.success,
+                  AppColors.emerald,
                 ),
               ),
             ],
@@ -180,20 +171,13 @@ class AdminDashboardPage extends StatelessWidget {
         children: [
           Text(
             value,
-            style: TextStyle(
+            style: AppText.numberSmall.copyWith(
               fontSize: 20,
-              fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
           const SizedBox(height: 2),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 11,
-              color: AppColors.textSecondary,
-            ),
-          ),
+          Text(label, style: AppText.label),
         ],
       ),
     );
@@ -205,16 +189,15 @@ class AdminDashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Row(
+          Row(
             children: [
-              Icon(Icons.vpn_key, color: AppColors.gold, size: 20),
-              SizedBox(width: 8),
+              const Icon(Icons.vpn_key, color: AppColors.gold, size: 20),
+              const SizedBox(width: 8),
               Text(
                 'كود الدعوة',
-                style: TextStyle(
-                  fontSize: 14,
-                  color: AppColors.text,
+                style: AppText.body.copyWith(
                   fontWeight: FontWeight.w600,
+                  color: AppColors.text,
                 ),
               ),
             ],
@@ -231,19 +214,14 @@ class AdminDashboardPage extends StatelessWidget {
             child: Center(
               child: SelectableText(
                 code,
-                style: const TextStyle(
-                  fontSize: 26,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.gold,
-                  letterSpacing: 6,
-                ),
+                style: AppText.code,
               ),
             ),
           ),
           const SizedBox(height: 8),
-          const Text(
+          Text(
             'شارك هذا الكود مع إخوانك للانضمام إلى المجموعة',
-            style: TextStyle(fontSize: 12, color: AppColors.textSecondary),
+            style: AppText.caption,
           ),
         ],
       ),
@@ -256,14 +234,7 @@ class AdminDashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text(
-            'الأعضاء',
-            style: TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.bold,
-              color: AppColors.text,
-            ),
-          ),
+          Text('الأعضاء', style: AppText.subtitle),
           const SizedBox(height: 12),
           ...group.members.map((m) {
             final p = m['profiles'] as Map<String, dynamic>?;
@@ -276,7 +247,7 @@ class AdminDashboardPage extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 18,
-                    backgroundColor: AppColors.teal.withAlpha(60),
+                    backgroundColor: AppColors.mint.withAlpha(60),
                     child: Text(
                       name.characters.first,
                       style: const TextStyle(
@@ -292,16 +263,15 @@ class AdminDashboardPage extends StatelessWidget {
                       children: [
                         Text(
                           name,
-                          style: const TextStyle(
-                            color: AppColors.text,
+                          style: AppText.body.copyWith(
                             fontWeight: FontWeight.w500,
+                            color: AppColors.text,
                           ),
                         ),
                         if (role == 'admin')
-                          const Text(
+                          Text(
                             'مشرف',
-                            style: TextStyle(
-                              fontSize: 11,
+                            style: AppText.label.copyWith(
                               color: AppColors.gold,
                             ),
                           ),

@@ -4,7 +4,7 @@ import 'package:provider/provider.dart';
 import '../../models/badge.dart';
 import '../../providers/badge_provider.dart';
 import '../../theme/app_colors.dart';
-import '../../widgets/glass_container.dart';
+import '../../theme/app_text.dart';
 
 class BadgesPage extends StatelessWidget {
   const BadgesPage({super.key});
@@ -19,18 +19,11 @@ class BadgesPage extends StatelessWidget {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
-              'الميداليات',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: AppColors.text,
-              ),
-            ),
+            Text('الميداليات', style: AppText.heading),
             const SizedBox(height: 4),
             Text(
               '${provider.unlockedCount} / ${provider.totalCount} مفتوحة',
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: AppText.caption,
             ),
             const SizedBox(height: 12),
             ClipRRect(
@@ -40,7 +33,7 @@ class BadgesPage extends StatelessWidget {
                 minHeight: 10,
                 backgroundColor: Colors.white.withAlpha(26),
                 valueColor:
-                    const AlwaysStoppedAnimation(AppColors.gold),
+                    const AlwaysStoppedAnimation(AppColors.goldBright),
               ),
             ),
             const SizedBox(height: 24),
@@ -54,11 +47,7 @@ class BadgesPage extends StatelessWidget {
                     padding: const EdgeInsets.only(bottom: 8),
                     child: Text(
                       cat.labelAr,
-                      style: const TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.text,
-                      ),
+                      style: AppText.section,
                     ),
                   ),
                   GridView.builder(
@@ -105,7 +94,9 @@ class _BadgeTile extends StatelessWidget {
             height: 72,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: unlocked ? color.withAlpha(50) : Colors.black.withAlpha(60),
+              color: unlocked
+                  ? color.withAlpha(50)
+                  : Colors.black.withAlpha(60),
               border: Border.all(
                 color: unlocked ? color : Colors.grey.shade800,
                 width: 2,
@@ -131,7 +122,7 @@ class _BadgeTile extends StatelessWidget {
             textAlign: TextAlign.center,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: TextStyle(
+            style: AppText.caption.copyWith(
               fontSize: 11,
               fontWeight: FontWeight.w600,
               color: unlocked ? AppColors.text : AppColors.textSecondary,
@@ -171,17 +162,13 @@ class _BadgeTile extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               unlocked ? badge.nameAr : 'ميدالية مقفلة',
-              style: const TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: AppColors.text,
-              ),
+              style: AppText.section.copyWith(fontSize: 22),
             ),
             const SizedBox(height: 6),
             Text(
               badge.description,
               textAlign: TextAlign.center,
-              style: const TextStyle(color: AppColors.textSecondary),
+              style: AppText.caption,
             ),
             const SizedBox(height: 12),
             Container(

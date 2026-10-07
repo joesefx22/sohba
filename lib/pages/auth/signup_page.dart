@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 import '../../widgets/app_button.dart';
@@ -70,11 +73,12 @@ class _SignupPageState extends State<SignupPage> {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(Icons.person_add,
-                        size: 56, color: Color(0xFFD4AF37)),
+                        size: 56, color: AppColors.gold),
                     const SizedBox(height: 16),
-                    const Text('انضم إلى صحبة',
-                        style: TextStyle(
-                            fontSize: 24, fontWeight: FontWeight.bold)),
+                    Text(
+                      'انضم إلى صحبة',
+                      style: AppText.section.copyWith(fontSize: 22),
+                    ),
                     const SizedBox(height: 24),
                     TextFormField(
                       controller: _nameCtrl,
@@ -83,8 +87,9 @@ class _SignupPageState extends State<SignupPage> {
                         prefixIcon: Icon(Icons.person_outline),
                         border: OutlineInputBorder(),
                       ),
-                      validator: (v) =>
-                          (v == null || v.trim().isEmpty) ? 'أدخل اسمك' : null,
+                      validator: (v) => (v == null || v.trim().isEmpty)
+                          ? 'أدخل اسمك'
+                          : null,
                     ),
                     const SizedBox(height: 16),
                     TextFormField(
@@ -111,9 +116,11 @@ class _SignupPageState extends State<SignupPage> {
                         prefixIcon: const Icon(Icons.lock_outline),
                         border: const OutlineInputBorder(),
                         suffixIcon: IconButton(
-                          icon: Icon(
-                              _obscure ? Icons.visibility : Icons.visibility_off),
-                          onPressed: () => setState(() => _obscure = !_obscure),
+                          icon: Icon(_obscure
+                              ? Icons.visibility
+                              : Icons.visibility_off),
+                          onPressed: () =>
+                              setState(() => _obscure = !_obscure),
                         ),
                       ),
                       validator: (v) =>

@@ -5,6 +5,7 @@ import '../../models/athkar.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/athkar_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import 'athkar_detail_page.dart';
 
@@ -39,7 +40,7 @@ class _AthkarPageState extends State<AthkarPage> {
       return const Scaffold(
         backgroundColor: Colors.transparent,
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.teal),
+          child: CircularProgressIndicator(color: AppColors.mint),
         ),
       );
     }
@@ -50,21 +51,12 @@ class _AthkarPageState extends State<AthkarPage> {
         child: ListView(
           padding: const EdgeInsets.all(16),
           children: [
-            const Text(
-              'الأذكار',
-              style: TextStyle(
-                fontSize: 26,
-                fontWeight: FontWeight.bold,
-                color: AppColors.text,
-              ),
-            ),
+            Text('الأذكار', style: AppText.heading),
             const SizedBox(height: 4),
-            const Text(
-              'حصن المسلم — أذكار الصباح والمساء',
-              style: TextStyle(color: AppColors.textSecondary),
-            ),
+            Text('حصن المسلم — أذكار الصباح والمساء', style: AppText.caption),
             const SizedBox(height: 20),
-            ...provider.categories.map((c) => _categoryCard(context, provider, c)),
+            ...provider.categories
+                .map((c) => _categoryCard(context, provider, c)),
           ],
         ),
       ),
@@ -97,12 +89,12 @@ class _AthkarPageState extends State<AthkarPage> {
               width: 52,
               height: 52,
               decoration: BoxDecoration(
-                color: AppColors.teal.withAlpha(45),
+                color: AppColors.mint.withAlpha(45),
                 borderRadius: BorderRadius.circular(14),
               ),
               child: Icon(
                 _iconFor(cat.icon),
-                color: AppColors.teal,
+                color: AppColors.mint,
                 size: 26,
               ),
             ),
@@ -115,11 +107,7 @@ class _AthkarPageState extends State<AthkarPage> {
                     children: [
                       Text(
                         cat.nameAr,
-                        style: const TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.text,
-                        ),
+                        style: AppText.subtitle,
                       ),
                       const SizedBox(width: 6),
                       if (cat.isMandatory)
@@ -148,16 +136,14 @@ class _AthkarPageState extends State<AthkarPage> {
                       value: progress,
                       minHeight: 6,
                       backgroundColor: Colors.white.withAlpha(26),
-                      valueColor: const AlwaysStoppedAnimation(AppColors.teal),
+                      valueColor:
+                          const AlwaysStoppedAnimation(AppColors.mint),
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     '$done / $total',
-                    style: const TextStyle(
-                      fontSize: 11,
-                      color: AppColors.textSecondary,
-                    ),
+                    style: AppText.caption,
                   ),
                 ],
               ),

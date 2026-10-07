@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 
 class GroupLeaderboardPage extends StatelessWidget {
@@ -30,7 +31,7 @@ class GroupLeaderboardPage extends StatelessWidget {
       backgroundColor: Colors.transparent,
       body: SafeArea(
         child: RefreshIndicator(
-          color: AppColors.teal,
+          color: AppColors.mint,
           onRefresh: () async {
             await group.loadForUser(auth.user!.id);
           },
@@ -44,14 +45,7 @@ class GroupLeaderboardPage extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        const Text(
-                          'المجموعة',
-                          style: TextStyle(
-                            fontSize: 26,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.text,
-                          ),
-                        ),
+                        Text('المجموعة', style: AppText.heading),
                         Text(
                           group.group!['name'] ?? '',
                           style: const TextStyle(
@@ -147,7 +141,7 @@ class GroupLeaderboardPage extends StatelessWidget {
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 10),
       padding: const EdgeInsets.all(14),
-      tintColor: isMe ? AppColors.teal.withAlpha(50) : null,
+      tintColor: isMe ? AppColors.emerald.withAlpha(40) : null,
       child: Row(
         children: [
           // Rank medal
@@ -183,10 +177,9 @@ class GroupLeaderboardPage extends StatelessWidget {
                     Flexible(
                       child: Text(
                         name,
-                        style: TextStyle(
+                        style: AppText.subtitle.copyWith(
                           fontSize: 15,
-                          fontWeight: FontWeight.bold,
-                          color: isMe ? AppColors.teal : AppColors.text,
+                          color: isMe ? AppColors.mint : AppColors.text,
                         ),
                         overflow: TextOverflow.ellipsis,
                       ),
@@ -197,7 +190,7 @@ class GroupLeaderboardPage extends StatelessWidget {
                         padding: const EdgeInsets.symmetric(
                             horizontal: 6, vertical: 2),
                         decoration: BoxDecoration(
-                          color: AppColors.teal.withAlpha(80),
+                          color: AppColors.emerald.withAlpha(80),
                           borderRadius: BorderRadius.circular(6),
                         ),
                         child: const Text(
@@ -247,13 +240,7 @@ class GroupLeaderboardPage extends StatelessWidget {
                   color: AppColors.gold,
                 ),
               ),
-              const Text(
-                'إيمان',
-                style: TextStyle(
-                  fontSize: 10,
-                  color: AppColors.textSecondary,
-                ),
-              ),
+              Text('إيمان', style: AppText.caption),
             ],
           ),
         ],

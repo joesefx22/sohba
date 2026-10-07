@@ -1,63 +1,57 @@
 import 'package:flutter/material.dart';
-
-import '../services/background_service.dart';
 import '../theme/app_colors.dart';
 
+/// Quiet background: deep green gradient + one soft emerald ambient glow.
 class GlassScaffold extends StatelessWidget {
   const GlassScaffold({
     super.key,
     required this.body,
     this.appBar,
     this.bottomNavigationBar,
-    this.floatingActionButton,
   });
 
   final Widget body;
   final PreferredSizeWidget? appBar;
   final Widget? bottomNavigationBar;
-  final Widget? floatingActionButton;
 
   @override
   Widget build(BuildContext context) {
-    final bg = BackgroundService().currentBackground;
-    final hasBg = bg.isNotEmpty;
-
     return Scaffold(
-      extendBody: true,
+      backgroundColor: AppColors.background,
       extendBodyBehindAppBar: true,
-      backgroundColor: Colors.transparent,
       appBar: appBar,
       bottomNavigationBar: bottomNavigationBar,
-      floatingActionButton: floatingActionButton,
       body: Stack(
         children: [
-          // Layer 1: Background (image or gradient fallback)
-          SizedBox.expand(
-            child: hasBg
-                ? Image.asset(bg, fit: BoxFit.cover)
-                : DecoratedBox(
-                    decoration: BoxDecoration(
-                      gradient: AppColors.backgroundLinearGradient,
-                    ),
-                  ),
-          ),
-          // Layer 2: Dark gradient overlay
-          SizedBox.expand(
+          const Positioned.fill(
             child: DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
-                  colors: [
-                    Colors.black.withAlpha(26),
-                    Colors.black.withAlpha(77),
-                  ],
+                  colors: [AppColors.background, AppColors.backgroundSecondary],
                 ),
               ),
             ),
           ),
-          // Layer 3: Content
-          body,
+          Positioned(
+            top: -120,
+            right: -80,
+            child: IgnorePointer(
+              child: Container(
+                width: 320,
+                height: 320,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    AppColors.emerald.withOpacity(0.10),
+                    Colors.transparent,
+                  ]),
+                ),
+              ),
+            ),
+          ),
+          SafeArea(child: body),
         ],
       ),
     );

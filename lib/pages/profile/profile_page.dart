@@ -6,6 +6,7 @@ import '../../providers/group_provider.dart';
 import '../../providers/streak_provider.dart';
 import '../../providers/badge_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 import '../admin/admin_dashboard_page.dart';
@@ -41,7 +42,7 @@ class ProfilePage extends StatelessWidget {
                 children: [
                   CircleAvatar(
                     radius: 48,
-                    backgroundColor: AppColors.teal.withAlpha(80),
+                    backgroundColor: AppColors.mint.withAlpha(80),
                     child: Text(
                       auth.displayName.characters.first,
                       style: const TextStyle(
@@ -54,11 +55,7 @@ class ProfilePage extends StatelessWidget {
                   const SizedBox(height: 12),
                   Text(
                     auth.displayName,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.text,
-                    ),
+                    style: AppText.section.copyWith(fontSize: 22),
                   ),
                   if (group.group != null)
                     Text(
@@ -76,11 +73,15 @@ class ProfilePage extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: _statCard('إيمان', iman.toStringAsFixed(1), AppColors.gold),
+                  child: _statCard(
+                    'إيمان',
+                    iman.toStringAsFixed(1),
+                    AppColors.gold,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
-                  child: _statCard('حسنات', '$hasanat', AppColors.teal),
+                  child: _statCard('حسنات', '$hasanat', AppColors.mint),
                 ),
               ],
             ),
@@ -88,7 +89,11 @@ class ProfilePage extends StatelessWidget {
             Row(
               children: [
                 Expanded(
-                  child: _statCard('مواصلة', '${streak.currentStreak}', Colors.orange),
+                  child: _statCard(
+                    'مواصلة',
+                    '${streak.currentStreak}',
+                    Colors.orange,
+                  ),
                 ),
                 const SizedBox(width: 10),
                 Expanded(
@@ -102,17 +107,20 @@ class ProfilePage extends StatelessWidget {
             ),
             const SizedBox(height: 24),
 
-            _item(Icons.settings, 'الإعدادات', AppColors.teal, () {
+            _item(Icons.settings, 'الإعدادات', AppColors.mint, () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SettingsPage()),
               );
             }),
-            _item(Icons.admin_panel_settings, 'لوحة الإدارة', AppColors.gold, () {
+            _item(Icons.admin_panel_settings, 'لوحة الإدارة', AppColors.gold,
+                () {
               Navigator.of(context).push(
-                MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
+                MaterialPageRoute(
+                    builder: (_) => const AdminDashboardPage()),
               );
             }),
-            _item(Icons.cloud_upload, 'رفع الأذكار (أدمن)', AppColors.rarityEpic, () {
+            _item(Icons.cloud_upload, 'رفع الأذكار (أدمن)',
+                AppColors.rarityEpic, () {
               Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const SeedAthkarPage()),
               );
@@ -160,20 +168,10 @@ class ProfilePage extends StatelessWidget {
         children: [
           Text(
             value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+            style: AppText.numberSmall.copyWith(color: color),
           ),
           const SizedBox(height: 4),
-          Text(
-            label,
-            style: const TextStyle(
-              fontSize: 12,
-              color: AppColors.textSecondary,
-            ),
-          ),
+          Text(label, style: AppText.caption),
         ],
       ),
     );

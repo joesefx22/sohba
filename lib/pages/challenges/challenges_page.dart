@@ -5,6 +5,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/challenge_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 
@@ -44,11 +45,16 @@ class _ChallengesPageState extends State<ChallengesPage> {
       ),
       body: SafeArea(
         child: p.loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.mint),
+              )
             : p.challenges.isEmpty
                 ? const Center(
-                    child: Text('لا توجد تحديات — ابدأ واحدًا مع إخوانك',
-                        style: TextStyle(color: AppColors.textSecondary)))
+                    child: Text(
+                      'لا توجد تحديات — ابدأ واحدًا مع إخوانك',
+                      style: TextStyle(color: AppColors.textSecondary),
+                    ),
+                  )
                 : ListView(
                     padding: const EdgeInsets.all(16),
                     children: p.challenges.map((c) {
@@ -63,31 +69,31 @@ class _ChallengesPageState extends State<ChallengesPage> {
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
                             Text(c.title,
-                                style: const TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.text)),
+                                style: AppText.section.copyWith(
+                                  fontSize: 18,
+                                )),
                             const SizedBox(height: 4),
-                            Text('${c.targetDays} يوم • ${participants.length} مشارك',
-                                style: const TextStyle(
-                                    fontSize: 12, color: AppColors.textSecondary)),
+                            Text(
+                              '${c.targetDays} يوم • ${participants.length} مشارك',
+                              style: AppText.caption,
+                            ),
                             const SizedBox(height: 12),
                             if (mine != null) ...[
                               LinearProgressIndicator(
-                                value: (mine.progress / c.targetDays).clamp(0.0, 1.0),
+                                value: (mine.progress / c.targetDays)
+                                    .clamp(0.0, 1.0),
                                 backgroundColor: Colors.white24,
-                                valueColor:
-                                    const AlwaysStoppedAnimation(AppColors.teal),
+                                valueColor: const AlwaysStoppedAnimation(
+                                    AppColors.mint),
                               ),
                               const SizedBox(height: 6),
                               Text(
                                 mine.completed
                                     ? 'أكملت التحدي ✓'
                                     : '${mine.progress}/${c.targetDays}',
-                                style: TextStyle(
-                                  fontSize: 12,
+                                style: AppText.caption.copyWith(
                                   color: mine.completed
-                                      ? AppColors.success
+                                      ? AppColors.emerald
                                       : AppColors.textSecondary,
                                 ),
                               ),
@@ -129,7 +135,8 @@ class _ChallengesPageState extends State<ChallengesPage> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const Text('تحدي جديد',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+                  style:
+                      TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
               const SizedBox(height: 16),
               TextField(
                 controller: titleCtrl,
@@ -144,10 +151,13 @@ class _ChallengesPageState extends State<ChallengesPage> {
                 decoration: const InputDecoration(
                     labelText: 'النوع', border: OutlineInputBorder()),
                 items: const [
-                  DropdownMenuItem(value: 'fajr_streak', child: Text('الفجر جماعة')),
-                  DropdownMenuItem(value: 'all_prayers', child: Text('كل الصلوات')),
+                  DropdownMenuItem(
+                      value: 'fajr_streak', child: Text('الفجر جماعة')),
+                  DropdownMenuItem(
+                      value: 'all_prayers', child: Text('كل الصلوات')),
                 ],
-                onChanged: (v) => setSheet(() => type = v ?? 'fajr_streak'),
+                onChanged: (v) =>
+                    setSheet(() => type = v ?? 'fajr_streak'),
               ),
               const SizedBox(height: 16),
               Row(

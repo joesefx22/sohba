@@ -46,13 +46,17 @@ class PrayerProvider extends ChangeNotifier {
     return t.phaseAt(DateTime.now());
   }
 
+  // ============================================
+  // LOAD
+  // ============================================
+
   Future<void> loadToday(String userId) async {
     _loading = true;
     _error = null;
     notifyListeners();
 
     try {
-      // 1. Sweep missed prayers from previous days
+      // 1. Sweep missed prayers from previous days (server-side)
       await _repo.sweepMissedPrayers(userId: userId);
 
       // 2. Load today's logs
@@ -95,55 +99,69 @@ class PrayerProvider extends ChangeNotifier {
     });
   }
 
+  // ============================================
+  // RECORD via RPC
+  // ============================================
+
   Future<PrayerRecordResult> recordPrayer({
     required String userId,
     required PrayerName prayer,
     required PrayerStatus status,
     double bonusMultiplier = 1.0,
   }) async {
+    // Fast client-side feedback (server re-validates).
+    final timeline = timelineFor(prayer);
     final now = DateTime.now();
-
-    final error = PrayerEngine.validateStatus(
+    final clientError = PrayerEngine.validateStatus(
       prayer: prayer,
       status: status,
       now: now,
       date: _todayDate,
     );
-    if (error != null) {
-      return PrayerRecordResult(success: false, error: error);
+    if (clientError != null) {
+      return PrayerRecordResult(success: false, error: clientError);
     }
 
-    final hasanat = PrayerEngine.hasanatWithBonus(
-      prayer: prayer,
-      status: status,
-      now: now,
-      date: _todayDate,
-      bonusMultiplier: bonusMultiplier,
-    );
-
-    final newLog = (_today[prayer] ??
-            PrayerLog.empty(
-              userId: userId,
-              date: _todayDate,
-              prayer: prayer,
-            ))
-        .copyWith(
-      status: status,
-      hasanat: hasanat,
-      recordedAt: now,
-      sayyiat: 0,
-      sayyiatRepented: false,
-    );
-
     try {
-      await _repo.upsertLog(newLog);
+      // Server-authoritative write.
+      final rpc = await _repo.recordPrayerRpc(
+        userId: userId,
+        prayer: prayer,
+        status: status,
+        logicalDate: _todayDate,
+        timeline: timeline,
+        bonusMultiplier: bonusMultiplier,
+      );
+
+      final newLog = PrayerLog(
+        id: rpc['id'] as String,
+        userId: userId,
+        date: _todayDate,
+        prayer: prayer,
+        status: status,
+        hasanat: (rpc['hasanat'] as num).toInt(),
+        recordedAt: DateTime.parse(rpc['recorded_at'] as String).toLocal(),
+      );
+
       _today[prayer] = newLog;
       notifyListeners();
-      return PrayerRecordResult(success: true, hasanat: hasanat, log: newLog);
+
+      return PrayerRecordResult(
+        success: true,
+        hasanat: newLog.hasanat,
+        log: newLog,
+      );
+    } on PostgrestException catch (e) {
+      // Server rejected (phase mismatch, unauthorized, etc.)
+      return PrayerRecordResult(success: false, error: e.message);
     } catch (e) {
       return PrayerRecordResult(success: false, error: e.toString());
     }
   }
+
+  // ============================================
+  // TAWBAH
+  // ============================================
 
   Future<PrayerRecordResult> markRepented({
     required String userId,
@@ -151,10 +169,12 @@ class PrayerProvider extends ChangeNotifier {
   }) async {
     final current = _today[prayer];
     if (current == null) {
-      return const PrayerRecordResult(success: false, error: 'لا يوجد سجل للصلاة');
+      return const PrayerRecordResult(
+          success: false, error: 'لا يوجد سجل للصلاة');
     }
     if (!current.hasUnrepentedSayyiat) {
-      return const PrayerRecordResult(success: false, error: 'لا توجد سيئات للتوبة');
+      return const PrayerRecordResult(
+          success: false, error: 'لا توجد سيئات للتوبة');
     }
 
     try {
@@ -176,6 +196,10 @@ class PrayerProvider extends ChangeNotifier {
     }
   }
 
+  // ============================================
+  // AGGREGATES
+  // ============================================
+
   int get todayHasanat =>
       _today.values.fold(0, (sum, log) => sum + log.hasanat);
 
@@ -186,7 +210,6 @@ class PrayerProvider extends ChangeNotifier {
       _today.values.fold(0.0, (sum, log) => sum + log.netImanEffect);
 
   PrayerName? get currentFocusPrayer {
-    final now = DateTime.now();
     for (final p in PrayerName.values) {
       final phase = phaseFor(p);
       if (phase == PrayerPhase.congregationOpen ||

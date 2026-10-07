@@ -15,6 +15,8 @@ import '../services/adhan_service.dart';
 import '../services/location_service.dart';
 import '../services/scheduler_service.dart';
 import '../config/app_config.dart';
+import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 import 'auth/login_page.dart';
 import 'group/join_group_page.dart';
 import 'home/home_page.dart';
@@ -34,7 +36,6 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _route() async {
-    // Capture all providers BEFORE any await
     final auth = context.read<AuthProvider>();
     final streakProvider = context.read<StreakProvider>();
     final groupProvider = context.read<GroupProvider>();
@@ -95,11 +96,7 @@ class _SplashPageState extends State<SplashPage> {
 
     if (!mounted) return;
 
-    if (lockProvider.isLocked) {
-      _go(const HomePage());
-    } else {
-      _go(groupProvider.hasGroup ? const HomePage() : const JoinGroupPage());
-    }
+    _go(groupProvider.hasGroup ? const HomePage() : const JoinGroupPage());
   }
 
   void _go(Widget page) {
@@ -111,37 +108,33 @@ class _SplashPageState extends State<SplashPage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFF0A1F1A),
+      backgroundColor: AppColors.background,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.mosque, size: 96, color: Color(0xFFD4AF37)),
-            const SizedBox(height: 32),
-            const Text(
+            const Icon(Icons.mosque, size: 92, color: AppColors.gold),
+            const SizedBox(height: 28),
+            Text(
               AppConfig.appName,
-              style: TextStyle(
-                fontSize: 56,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFFD4AF37),
+              style: AppText.heading.copyWith(
+                fontSize: 52,
+                color: AppColors.gold,
                 letterSpacing: 2,
               ),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 10),
             Text(
               AppConfig.appTagline,
-              style: TextStyle(
-                fontSize: 18,
-                color: Colors.white.withAlpha(180),
-              ),
+              style: AppText.caption.copyWith(fontSize: 15),
             ),
-            const SizedBox(height: 64),
+            const SizedBox(height: 60),
             const SizedBox(
-              width: 40,
-              height: 40,
+              width: 36,
+              height: 36,
               child: CircularProgressIndicator(
-                strokeWidth: 3,
-                color: Color(0xFF198754),
+                strokeWidth: 2.5,
+                color: AppColors.emerald,
               ),
             ),
           ],

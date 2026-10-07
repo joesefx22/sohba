@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../services/athkar_seeder.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 import '../../widgets/error_state.dart';
@@ -61,10 +62,12 @@ class _SeedAthkarPageState extends State<SeedAthkarPage> {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
-                  _seeded == true ? Icons.check_circle : Icons.cloud_upload,
+                  _seeded == true
+                      ? Icons.check_circle
+                      : Icons.cloud_upload,
                   size: 56,
                   color: _seeded == true
-                      ? AppColors.success
+                      ? AppColors.emerald
                       : AppColors.gold,
                 ),
                 const SizedBox(height: 16),
@@ -72,20 +75,13 @@ class _SeedAthkarPageState extends State<SeedAthkarPage> {
                   _seeded == true
                       ? 'الأذكار موجودة في السيرفر'
                       : 'الأذكار غير مرفوعة بعد',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.text,
-                  ),
+                  style: AppText.section,
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 12),
-                const Text(
+                Text(
                   'هذه العملية ترفع حصن المسلم بالكامل من الملف المحلي إلى Supabase. آمنة للتشغيل أكثر من مرة.',
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: AppColors.textSecondary,
-                  ),
+                  style: AppText.caption.copyWith(fontSize: 13),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 24),
@@ -103,7 +99,7 @@ class _SeedAthkarPageState extends State<SeedAthkarPage> {
                       : const Icon(Icons.cloud_upload),
                   label: Text(_running ? 'جارٍ الرفع...' : 'ابدأ الرفع'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.teal,
+                    backgroundColor: AppColors.mint,
                     foregroundColor: Colors.white,
                     minimumSize: const Size.fromHeight(52),
                   ),

@@ -18,7 +18,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
   Widget build(BuildContext context) {
     if (_error != null) {
       return Scaffold(
-        backgroundColor: AppColors.backgroundStart,
+        backgroundColor: AppColors.background,
         body: Center(
           child: Padding(
             padding: const EdgeInsets.all(32),
@@ -50,7 +50,7 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
                 FilledButton(
                   onPressed: () => setState(() => _error = null),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.teal,
+                    backgroundColor: AppColors.mint,
                   ),
                   child: const Text('إعادة المحاولة'),
                 ),
@@ -60,7 +60,6 @@ class _ErrorBoundaryState extends State<ErrorBoundary> {
         ),
       );
     }
-
     return widget.child;
   }
 }

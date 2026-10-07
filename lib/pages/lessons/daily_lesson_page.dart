@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/daily_lesson_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 
@@ -18,7 +19,7 @@ class DailyLessonPage extends StatelessWidget {
     if (p.loading) {
       return const GlassScaffold(
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.teal),
+          child: CircularProgressIndicator(color: AppColors.mint),
         ),
       );
     }
@@ -52,39 +53,31 @@ class DailyLessonPage extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.headphones, color: AppColors.gold, size: 24),
+                      const Icon(Icons.headphones,
+                          color: AppColors.goldBright, size: 24),
                       const SizedBox(width: 8),
-                      Text(
-                        lesson.durationLabel,
-                        style: const TextStyle(color: AppColors.textSecondary),
-                      ),
+                      Text(lesson.durationLabel, style: AppText.caption),
                       const Spacer(),
                       if (p.listened)
                         const Row(children: [
                           Icon(Icons.check_circle,
-                              color: AppColors.teal, size: 18),
+                              color: AppColors.mint, size: 18),
                           SizedBox(width: 4),
-                          Text('تم', style: TextStyle(color: AppColors.teal)),
+                          Text('تم',
+                              style: TextStyle(color: AppColors.mint)),
                         ]),
                     ],
                   ),
                   const SizedBox(height: 12),
                   Text(
                     lesson.title,
-                    style: const TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.text,
-                    ),
+                    style: AppText.section.copyWith(fontSize: 22),
                   ),
                   if (lesson.transcript != null) ...[
                     const SizedBox(height: 16),
                     Text(
                       lesson.transcript!,
-                      style: const TextStyle(
-                        height: 1.7,
-                        color: AppColors.textSecondary,
-                      ),
+                      style: AppText.body.copyWith(height: 1.7),
                     ),
                   ],
                   const SizedBox(height: 24),
@@ -96,9 +89,10 @@ class DailyLessonPage extends StatelessWidget {
                           icon: const Icon(Icons.play_arrow),
                           label: const Text('استمع'),
                           style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.teal,
+                            backgroundColor: AppColors.emerald,
                             foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 14),
+                            padding:
+                                const EdgeInsets.symmetric(vertical: 14),
                           ),
                         ),
                       ),

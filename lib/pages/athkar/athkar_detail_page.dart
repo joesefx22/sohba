@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 
 import '../../models/athkar.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/athkar_provider.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/error_state.dart';
 
@@ -17,7 +19,7 @@ class AthkarDetailPage extends StatelessWidget {
     final provider = context.watch<AthkarProvider>();
 
     return Scaffold(
-      backgroundColor: AppColors.backgroundStart,
+      backgroundColor: AppColors.background,
       appBar: AppBar(
         title: Text(category.nameAr),
         backgroundColor: Colors.transparent,
@@ -52,16 +54,15 @@ class _AthkarCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Arabic text
+          // Arabic text — Amiri line height for Quranic readability
           Text(
             item.arabic,
             textAlign: TextAlign.right,
             textDirection: TextDirection.rtl,
-            style: const TextStyle(
+            style: GoogleFonts.amiri(
               fontSize: 18,
               height: 1.9,
               color: AppColors.text,
-              fontFamily: 'Amiri',
             ),
           ),
           if (item.translation != null) ...[
@@ -74,11 +75,7 @@ class _AthkarCard extends StatelessWidget {
               ),
               child: Text(
                 item.translation!,
-                style: const TextStyle(
-                  fontSize: 12,
-                  color: AppColors.textSecondary,
-                  height: 1.5,
-                ),
+                style: AppText.caption.copyWith(height: 1.5),
               ),
             ),
           ],
@@ -101,10 +98,9 @@ class _AthkarCard extends StatelessWidget {
                   done
                       ? '✓ تم'
                       : 'التكرار: $count / ${item.repeatCount}',
-                  style: TextStyle(
-                    fontSize: 13,
+                  style: AppText.body.copyWith(
                     fontWeight: FontWeight.w600,
-                    color: done ? AppColors.teal : AppColors.textSecondary,
+                    color: done ? AppColors.mint : AppColors.textSecondary,
                   ),
                 ),
               ),
@@ -114,13 +110,13 @@ class _AthkarCard extends StatelessWidget {
                   icon: const Icon(Icons.add, size: 18),
                   label: const Text('سبّح'),
                   style: FilledButton.styleFrom(
-                    backgroundColor: AppColors.teal,
+                    backgroundColor: AppColors.mint,
                     foregroundColor: Colors.white,
                   ),
                 )
               else
                 const Icon(Icons.check_circle,
-                    color: AppColors.teal, size: 32),
+                    color: AppColors.mint, size: 32),
             ],
           ),
         ],

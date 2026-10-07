@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/group_provider.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 import '../../widgets/app_button.dart';
@@ -77,7 +79,8 @@ class _JoinGroupPageState extends State<JoinGroupPage>
     final ok = await context.read<GroupProvider>().createGroup(
           name: _createNameCtrl.text,
           userId: userId,
-          description: _createDescCtrl.text.isEmpty ? null : _createDescCtrl.text,
+          description:
+              _createDescCtrl.text.isEmpty ? null : _createDescCtrl.text,
         );
 
     if (!mounted) return;
@@ -106,6 +109,9 @@ class _JoinGroupPageState extends State<JoinGroupPage>
         elevation: 0,
         bottom: TabBar(
           controller: _tabs,
+          indicatorColor: AppColors.emerald,
+          labelColor: AppColors.mint,
+          unselectedLabelColor: AppColors.textSecondary,
           tabs: const [
             Tab(text: 'انضمام'),
             Tab(text: 'إنشاء'),
@@ -134,10 +140,11 @@ class _JoinGroupPageState extends State<JoinGroupPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.group_add, size: 56, color: Color(0xFFD4AF37)),
+              const Icon(Icons.group_add,
+                  size: 56, color: AppColors.gold),
               const SizedBox(height: 16),
-              const Text('انضم إلى مجموعة',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              Text('انضم إلى مجموعة',
+                  style: AppText.section.copyWith(fontSize: 22)),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _joinNameCtrl,
@@ -146,8 +153,9 @@ class _JoinGroupPageState extends State<JoinGroupPage>
                   prefixIcon: Icon(Icons.group),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().isEmpty) ? 'أدخل اسم المجموعة' : null,
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'أدخل اسم المجموعة'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(
@@ -186,10 +194,11 @@ class _JoinGroupPageState extends State<JoinGroupPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.add_circle, size: 56, color: Color(0xFFD4AF37)),
+              const Icon(Icons.add_circle,
+                  size: 56, color: AppColors.gold),
               const SizedBox(height: 16),
-              const Text('أنشئ مجموعة جديدة',
-                  style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+              Text('أنشئ مجموعة جديدة',
+                  style: AppText.section.copyWith(fontSize: 22)),
               const SizedBox(height: 24),
               TextFormField(
                 controller: _createNameCtrl,
@@ -198,8 +207,9 @@ class _JoinGroupPageState extends State<JoinGroupPage>
                   prefixIcon: Icon(Icons.group),
                   border: OutlineInputBorder(),
                 ),
-                validator: (v) =>
-                    (v == null || v.trim().length < 3) ? '3 أحرف على الأقل' : null,
+                validator: (v) => (v == null || v.trim().length < 3)
+                    ? '3 أحرف على الأقل'
+                    : null,
               ),
               const SizedBox(height: 16),
               TextFormField(

@@ -16,6 +16,8 @@ import 'providers/daily_lesson_provider.dart';
 import 'providers/challenge_provider.dart';
 import 'pages/splash_page.dart';
 import 'services/push_notification_service.dart';
+import 'theme/app_colors.dart';
+import 'theme/app_theme.dart';
 import 'widgets/error_boundary.dart';
 
 Future<void> main() async {
@@ -59,17 +61,7 @@ class SohbaApp extends StatelessWidget {
         child: MaterialApp(
           title: 'صحبة',
           debugShowCheckedModeBanner: false,
-          theme: ThemeData(
-            useMaterial3: true,
-            brightness: Brightness.dark,
-            scaffoldBackgroundColor: const Color(0xFF0A1F1A),
-            colorScheme: const ColorScheme.dark(
-              primary: Color(0xFF198754),
-              secondary: Color(0xFFD4AF37),
-              surface: Color(0xFF1E3A32),
-              error: Color(0xFFEF4444),
-            ),
-          ),
+          theme: AppTheme.dark,
           localizationsDelegates: const [
             GlobalMaterialLocalizations.delegate,
             GlobalWidgetsLocalizations.delegate,
@@ -87,36 +79,32 @@ class SohbaApp extends StatelessWidget {
 
 class _ConfigErrorApp extends StatelessWidget {
   const _ConfigErrorApp();
+
   @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        backgroundColor: const Color(0xFF0A1F1A),
-        body: Center(
-          child: Padding(
-            padding: const EdgeInsets.all(32),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: const [
-                Icon(Icons.error_outline, size: 64, color: Color(0xFFEF4444)),
-                SizedBox(height: 16),
-                Text('إعدادات ناقصة',
-                    style: TextStyle(
-                        fontSize: 22,
-                        fontWeight: FontWeight.bold,
-                        color: Colors.white)),
-                SizedBox(height: 12),
-                Text(
-                  'تأكد من وجود .env فيه SUPABASE_URL و SUPABASE_ANON_KEY',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(color: Colors.white70, fontSize: 14),
-                ),
-              ],
+  Widget build(BuildContext context) => MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: AppTheme.dark,
+        home: Scaffold(
+          backgroundColor: AppColors.background,
+          body: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(32),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                  const SizedBox(height: 16),
+                  Text('إعدادات ناقصة', style: AppText.heading.copyWith(fontSize: 22)),
+                  const SizedBox(height: 12),
+                  Text(
+                    'تأكد من وجود .env فيه SUPABASE_URL و SUPABASE_ANON_KEY',
+                    textAlign: TextAlign.center,
+                    style: AppText.caption,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
-      ),
-    );
-  }
+      );
 }

@@ -1,13 +1,8 @@
 import 'dart:ui';
-
 import 'package:flutter/material.dart';
-
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 
-/// A frosted-glass AppBar that blurs the content behind it.
-///
-/// Drop-in replacement for [AppBar] that adds a [BackdropFilter] blur effect.
-/// Works with [GlassScaffold] which sets `extendBodyBehindAppBar: true`.
 class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   const GlassAppBar({
     super.key,
@@ -27,9 +22,8 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
   final bool automaticallyImplyLeading;
 
   @override
-  Size get preferredSize => Size.fromHeight(
-        kToolbarHeight + (bottom?.preferredSize.height ?? 0),
-      );
+  Size get preferredSize =>
+      Size.fromHeight(kToolbarHeight + (bottom?.preferredSize.height ?? 0));
 
   @override
   Widget build(BuildContext context) {
@@ -42,16 +36,17 @@ class GlassAppBar extends StatelessWidget implements PreferredSizeWidget {
       automaticallyImplyLeading: automaticallyImplyLeading,
       backgroundColor: Colors.transparent,
       elevation: 0,
+      scrolledUnderElevation: 0,
+      titleTextStyle: AppText.section,
+      iconTheme: const IconThemeData(color: AppColors.text),
       flexibleSpace: ClipRect(
         child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
+          filter: ImageFilter.blur(sigmaX: 12, sigmaY: 12),
           child: Container(
             decoration: BoxDecoration(
-              color: AppColors.surface.withAlpha(77),
+              color: AppColors.backgroundSecondary.withAlpha(180),
               border: Border(
-                bottom: BorderSide(
-                  color: Colors.white.withAlpha(26),
-                ),
+                bottom: BorderSide(color: Colors.white.withAlpha(13)),
               ),
             ),
           ),

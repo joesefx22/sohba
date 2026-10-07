@@ -1,368 +1,207 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+
 import '../theme/app_colors.dart';
+import '../theme/app_motion.dart';
+import '../theme/app_text.dart';
+import 'press_scale.dart';
 
-/// A styled app button with haptic feedback and consistent styling.
-///
-/// Provides primary, secondary, and text button variants with
-/// proper tap feedback and optional loading state.
-class AppButton extends StatefulWidget {
-  /// Button label text.
-  final String label;
+enum AppButtonStyle { primary, secondary, gold }
 
-  /// Callback when button is pressed.
-  final VoidCallback? onPressed;
-
-  /// Button variant style.
-  final AppButtonVariant variant;
-
-  /// Whether the button is in loading state.
-  final bool isLoading;
-
-  /// Optional icon to show before the label.
-  final IconData? icon;
-
-  /// Whether to expand to full width.
-  final bool expanded;
-
-  /// Custom padding.
-  final EdgeInsets? padding;
-
-  /// Custom background color (overrides variant default).
-  final Color? backgroundColor;
-
-  /// Custom foreground color (overrides variant default).
-  final Color? foregroundColor;
-
+class AppButton extends StatelessWidget {
   const AppButton({
     super.key,
     required this.label,
-    this.onPressed,
-    this.variant = AppButtonVariant.primary,
-    this.isLoading = false,
+    required this.onPressed,
+    this.style = AppButtonStyle.primary,
     this.icon,
-    this.expanded = false,
-    this.padding,
+    this.expand = true,
     this.backgroundColor,
     this.foregroundColor,
+    this.isLoading = false,
   });
 
-  /// Creates a primary button.
+  // ── Legacy factories (backwards compatible) ───────────────────
   factory AppButton.primary({
     required String label,
-    VoidCallback? onPressed,
-    bool isLoading = false,
+    required VoidCallback? onPressed,
     IconData? icon,
-    bool expanded = false,
-    EdgeInsets? padding,
+    bool expanded = true,
     Color? backgroundColor,
     Color? foregroundColor,
-  }) {
-    return AppButton(
-      label: label,
-      onPressed: onPressed,
-      variant: AppButtonVariant.primary,
-      isLoading: isLoading,
-      icon: icon,
-      expanded: expanded,
-      padding: padding,
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
-    );
-  }
+    bool isLoading = false,
+  }) =>
+      AppButton(
+        label: label,
+        onPressed: onPressed,
+        style: AppButtonStyle.primary,
+        icon: icon,
+        expand: expanded,
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        isLoading: isLoading,
+      );
 
-  /// Creates a secondary button.
   factory AppButton.secondary({
     required String label,
-    VoidCallback? onPressed,
-    bool isLoading = false,
+    required VoidCallback? onPressed,
     IconData? icon,
-    bool expanded = false,
-    EdgeInsets? padding,
+    bool expanded = true,
     Color? backgroundColor,
     Color? foregroundColor,
-  }) {
-    return AppButton(
-      label: label,
-      onPressed: onPressed,
-      variant: AppButtonVariant.secondary,
-      isLoading: isLoading,
-      icon: icon,
-      expanded: expanded,
-      padding: padding,
-      backgroundColor: backgroundColor,
-      foregroundColor: foregroundColor,
-    );
-  }
-
-  /// Creates a text button.
-  factory AppButton.text({
-    required String label,
-    VoidCallback? onPressed,
     bool isLoading = false,
+  }) =>
+      AppButton(
+        label: label,
+        onPressed: onPressed,
+        style: AppButtonStyle.secondary,
+        icon: icon,
+        expand: expanded,
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        isLoading: isLoading,
+      );
+
+  factory AppButton.gold({
+    required String label,
+    required VoidCallback? onPressed,
     IconData? icon,
+    bool expanded = true,
+    Color? backgroundColor,
     Color? foregroundColor,
-  }) {
-    return AppButton(
-      label: label,
-      onPressed: onPressed,
-      variant: AppButtonVariant.text,
-      isLoading: isLoading,
-      icon: icon,
-      foregroundColor: foregroundColor,
-    );
-  }
-
-  /// Creates a destructive button.
-  factory AppButton.destructive({
-    required String label,
-    VoidCallback? onPressed,
     bool isLoading = false,
-    IconData? icon,
-    bool expanded = false,
-    EdgeInsets? padding,
-  }) {
-    return AppButton(
-      label: label,
-      onPressed: onPressed,
-      variant: AppButtonVariant.destructive,
-      isLoading: isLoading,
-      icon: icon,
-      expanded: expanded,
-      padding: padding,
-    );
-  }
+  }) =>
+      AppButton(
+        label: label,
+        onPressed: onPressed,
+        style: AppButtonStyle.gold,
+        icon: icon,
+        expand: expanded,
+        backgroundColor: backgroundColor,
+        foregroundColor: foregroundColor,
+        isLoading: isLoading,
+      );
 
-  @override
-  State<AppButton> createState() => _AppButtonState();
-}
-
-class _AppButtonState extends State<AppButton>
-    with SingleTickerProviderStateMixin {
-  late AnimationController _scaleController;
-  late Animation<double> _scaleAnimation;
-
-  @override
-  void initState() {
-    super.initState();
-    _scaleController = AnimationController(
-      duration: const Duration(milliseconds: 100),
-      vsync: this,
-    );
-    _scaleAnimation = Tween<double>(begin: 1.0, end: 0.95).animate(
-      CurvedAnimation(parent: _scaleController, curve: Curves.easeInOut),
-    );
-  }
-
-  @override
-  void dispose() {
-    _scaleController.dispose();
-    super.dispose();
-  }
-
-  void _handleTapDown(TapDownDetails details) {
-    if (widget.onPressed != null && !widget.isLoading) {
-      _scaleController.forward();
-    }
-  }
-
-  void _handleTapUp(TapUpDetails details) {
-    _scaleController.reverse();
-  }
-
-  void _handleTapCancel() {
-    _scaleController.reverse();
-  }
-
-  void _handleTap() {
-    if (widget.onPressed != null && !widget.isLoading) {
-      HapticFeedback.lightImpact();
-      widget.onPressed!();
-    }
-  }
+  final String label;
+  final VoidCallback? onPressed;
+  final AppButtonStyle style;
+  final IconData? icon;
+  final bool expand;
+  final Color? backgroundColor;
+  final Color? foregroundColor;
+  final bool isLoading;
 
   @override
   Widget build(BuildContext context) {
-    final isDisabled = widget.onPressed == null || widget.isLoading;
+    final enabled = onPressed != null && !isLoading;
 
-    return GestureDetector(
-      onTapDown: _handleTapDown,
-      onTapUp: _handleTapUp,
-      onTapCancel: _handleTapCancel,
-      onTap: _handleTap,
-      child: AnimatedBuilder(
-        animation: _scaleAnimation,
-        builder: (context, child) {
-          return Transform.scale(
-            scale: _scaleAnimation.value,
-            child: child,
-          );
-        },
-        child: _buildButton(isDisabled),
-      ),
-    );
-  }
+    // ── Default palette per style ─────────────────────────────────
+    Gradient? bg;
+    Color fg;
+    Color? border;
 
-  Widget _buildButton(bool isDisabled) {
-    final colors = _getColors();
-    final defaultPadding = widget.padding ??
-        const EdgeInsets.symmetric(horizontal: 24, vertical: 14);
-
-    Widget content = Row(
-      mainAxisSize: widget.expanded ? MainAxisSize.max : MainAxisSize.min,
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        if (widget.isLoading) ...[
-          SizedBox(
-            width: 18,
-            height: 18,
-            child: CircularProgressIndicator(
-              strokeWidth: 2,
-              valueColor: AlwaysStoppedAnimation<Color>(colors.foreground),
-            ),
-          ),
-          const SizedBox(width: 12),
-        ] else if (widget.icon != null) ...[
-          Icon(widget.icon, size: 20, color: colors.foreground),
-          const SizedBox(width: 8),
-        ],
-        Text(
-          widget.label,
-          style: TextStyle(
-            color: colors.foreground,
-            fontSize: 16,
-            fontWeight: FontWeight.w600,
-          ),
-        ),
-      ],
-    );
-
-    if (widget.variant == AppButtonVariant.text) {
-      return Opacity(
-        opacity: isDisabled ? 0.5 : 1.0,
-        child: Padding(
-          padding: defaultPadding,
-          child: content,
-        ),
-      );
+    switch (style) {
+      case AppButtonStyle.primary:
+        bg = AppColors.progressGradient;
+        fg = AppColors.background;
+        border = null;
+      case AppButtonStyle.gold:
+        bg = AppColors.goldGradient;
+        fg = AppColors.background;
+        border = null;
+      case AppButtonStyle.secondary:
+        bg = null;
+        fg = AppColors.mint;
+        border = AppColors.emerald.withValues(alpha: 0.4);
     }
 
-    return AnimatedContainer(
-      duration: const Duration(milliseconds: 200),
-      padding: defaultPadding,
-      decoration: BoxDecoration(
-        color: isDisabled ? colors.background.withAlpha(128) : colors.background,
-        borderRadius: BorderRadius.circular(12),
-        border: widget.variant == AppButtonVariant.secondary
-            ? Border.all(color: colors.border, width: 2)
+    // ── Apply overrides ───────────────────────────────────────────
+    // Solid backgroundColor overrides the gradient entirely.
+    if (backgroundColor != null) {
+      bg = null;
+    }
+    if (foregroundColor != null) {
+      fg = foregroundColor!;
+    }
+
+    return Opacity(
+      opacity: enabled ? 1 : 0.45,
+      child: PressScale(
+        onTap: enabled
+            ? () {
+                HapticFeedback.selectionClick();
+                onPressed!();
+              }
             : null,
-        boxShadow: null,
+        child: Container(
+          height: 52,
+          width: expand ? double.infinity : null,
+          padding: const EdgeInsets.symmetric(horizontal: 24),
+          decoration: BoxDecoration(
+            gradient: bg,
+            color: backgroundColor ??
+                (bg == null ? Colors.transparent : null),
+            borderRadius: BorderRadius.circular(16),
+            border: border == null ? null : Border.all(color: border),
+          ),
+          child: Row(
+            mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              if (isLoading) ...[
+                SizedBox(
+                  width: 18,
+                  height: 18,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(fg),
+                  ),
+                ),
+                const SizedBox(width: 10),
+              ] else if (icon != null) ...[
+                Icon(icon, color: fg, size: 20),
+                const SizedBox(width: 8),
+              ],
+              Text(
+                label,
+                style: AppText.section.copyWith(
+                  color: fg,
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      child: content,
-    );
-  }
-
-  _ButtonColors _getColors() {
-    final _ButtonColors defaults;
-    switch (widget.variant) {
-      case AppButtonVariant.primary:
-        defaults = _ButtonColors(
-          background: AppColors.teal.withAlpha(200),
-          foreground: Colors.white,
-          border: Colors.transparent,
-        );
-      case AppButtonVariant.secondary:
-        defaults = _ButtonColors(
-          background: Colors.transparent,
-          foreground: AppColors.teal,
-          border: AppColors.teal,
-        );
-      case AppButtonVariant.text:
-        defaults = _ButtonColors(
-          background: Colors.transparent,
-          foreground: AppColors.teal,
-          border: Colors.transparent,
-        );
-      case AppButtonVariant.destructive:
-        defaults = _ButtonColors(
-          background: AppColors.error.withAlpha(200),
-          foreground: Colors.white,
-          border: Colors.transparent,
-        );
-    }
-    return _ButtonColors(
-      background: widget.backgroundColor ?? defaults.background,
-      foreground: widget.foregroundColor ?? defaults.foreground,
-      border: defaults.border,
     );
   }
 }
 
-enum AppButtonVariant {
-  primary,
-  secondary,
-  text,
-  destructive,
-}
-
-class _ButtonColors {
-  final Color background;
-  final Color foreground;
-  final Color border;
-
-  _ButtonColors({
-    required this.background,
-    required this.foreground,
-    required this.border,
-  });
-}
-
-/// An icon button with haptic feedback.
+/// Small inline icon button.
 class AppIconButton extends StatelessWidget {
-  /// Icon to display.
-  final IconData icon;
-
-  /// Callback when button is pressed.
-  final VoidCallback? onPressed;
-
-  /// Icon color.
-  final Color? color;
-
-  /// Icon size.
-  final double size;
-
-  /// Optional tooltip.
-  final String? tooltip;
-
   const AppIconButton({
     super.key,
     required this.icon,
     this.onPressed,
     this.color,
     this.size = 24,
-    this.tooltip,
   });
 
+  final IconData icon;
+  final VoidCallback? onPressed;
+  final Color? color;
+  final double size;
+
   @override
-  Widget build(BuildContext context) {
-    final button = IconButton(
-      icon: Icon(icon, size: size),
-      color: color ?? AppColors.textSecondary,
-      onPressed: onPressed != null
-          ? () {
-              HapticFeedback.lightImpact();
-              onPressed!();
-            }
-          : null,
-    );
-
-    if (tooltip != null) {
-      return Tooltip(
-        message: tooltip!,
-        child: button,
+  Widget build(BuildContext context) => IconButton(
+        icon: Icon(icon, size: size),
+        color: color ?? AppColors.textSecondary,
+        onPressed: onPressed != null
+            ? () {
+                HapticFeedback.selectionClick();
+                onPressed!();
+              }
+            : null,
       );
-    }
-
-    return button;
-  }
 }

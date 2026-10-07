@@ -80,15 +80,15 @@ extension PrayerStatusX on PrayerStatus {
   Color get color {
     switch (this) {
       case PrayerStatus.pending:
-        return const Color(0xFF9E9E9E);
+        return const Color(0xFF9EAEA7);
       case PrayerStatus.congregation:
-        return const Color(0xFF198754);
+        return const Color(0xFF35C98A);
       case PrayerStatus.individual:
-        return const Color(0xFF4A9DFF);
+        return const Color(0xFF5DD6D0);
       case PrayerStatus.qada:
-        return const Color(0xFFF59E0B);
+        return const Color(0xFFE0A458);
       case PrayerStatus.missed:
-        return const Color(0xFFEF4444);
+        return const Color(0xFFD96B6B);
     }
   }
 }

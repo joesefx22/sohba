@@ -1,17 +1,9 @@
 import 'package:flutter/material.dart';
 import '../theme/app_colors.dart';
 
-/// A reusable loading state widget with consistent styling.
-///
-/// Use this widget when loading data or waiting for an operation to complete.
 class LoadingState extends StatelessWidget {
-  /// Optional message to display below the loading indicator.
   final String? message;
-
-  /// Size of the loading indicator.
   final double size;
-
-  /// Whether to use a compact layout.
   final bool compact;
 
   const LoadingState({
@@ -28,9 +20,9 @@ class LoadingState extends StatelessWidget {
         child: SizedBox(
           width: size,
           height: size,
-          child: CircularProgressIndicator(
+          child: const CircularProgressIndicator(
             strokeWidth: 3,
-            valueColor: AlwaysStoppedAnimation<Color>(AppColors.teal),
+            valueColor: AlwaysStoppedAnimation<Color>(AppColors.mint),
           ),
         ),
       );
@@ -43,16 +35,16 @@ class LoadingState extends StatelessWidget {
           SizedBox(
             width: size,
             height: size,
-            child: CircularProgressIndicator(
+            child: const CircularProgressIndicator(
               strokeWidth: 3,
-              valueColor: AlwaysStoppedAnimation<Color>(AppColors.teal),
+              valueColor: AlwaysStoppedAnimation<Color>(AppColors.mint),
             ),
           ),
           if (message != null) ...[
             const SizedBox(height: 16),
             Text(
               message!,
-              style: TextStyle(
+              style: const TextStyle(
                 color: AppColors.textSecondary,
                 fontSize: 14,
               ),
@@ -67,13 +59,8 @@ class LoadingState extends StatelessWidget {
 
 /// A loading overlay that covers its child widget.
 class LoadingOverlay extends StatelessWidget {
-  /// Whether the loading overlay is visible.
   final bool isLoading;
-
-  /// The child widget to cover.
   final Widget child;
-
-  /// Optional message to display.
   final String? message;
 
   const LoadingOverlay({
@@ -91,7 +78,7 @@ class LoadingOverlay extends StatelessWidget {
         if (isLoading)
           Positioned.fill(
             child: Container(
-              color: Colors.black.withAlpha(128),
+              color: Colors.black.withValues(alpha: 0.5),
               child: LoadingState(message: message, compact: true),
             ),
           ),
@@ -102,10 +89,7 @@ class LoadingOverlay extends StatelessWidget {
 
 /// A shimmer loading placeholder for list items.
 class ShimmerLoadingItem extends StatefulWidget {
-  /// Height of the shimmer item.
   final double height;
-
-  /// Border radius of the shimmer item.
   final double borderRadius;
 
   const ShimmerLoadingItem({
@@ -155,7 +139,7 @@ class _ShimmerLoadingItemState extends State<ShimmerLoadingItem>
             gradient: LinearGradient(
               begin: Alignment.centerLeft,
               end: Alignment.centerRight,
-              colors: [
+              colors: const [
                 AppColors.surface,
                 AppColors.surfaceElevated,
                 AppColors.surface,
@@ -175,10 +159,7 @@ class _ShimmerLoadingItemState extends State<ShimmerLoadingItem>
 
 /// A list of shimmer loading placeholders.
 class ShimmerLoadingList extends StatelessWidget {
-  /// Number of shimmer items to show.
   final int itemCount;
-
-  /// Height of each shimmer item.
   final double itemHeight;
 
   const ShimmerLoadingList({

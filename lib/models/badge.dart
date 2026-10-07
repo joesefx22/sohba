@@ -8,13 +8,13 @@ extension BadgeTierX on BadgeTier {
   Color get color {
     switch (this) {
       case BadgeTier.bronze:
-        return const Color(0xFFCD7F32);
+        return const Color(0xFFB87333);
       case BadgeTier.silver:
-        return const Color(0xFFC0C0C0);
+        return const Color(0xFFB8B8B8);
       case BadgeTier.gold:
-        return const Color(0xFFFFD700);
+        return const Color(0xFFD8B65A);
       case BadgeTier.platinum:
-        return const Color(0xFFE5E4E2);
+        return const Color(0xFF6DE7B0);
     }
   }
 
@@ -56,6 +56,22 @@ class Badge {
   final BadgeCategory category;
   final String condition;
   final int? targetValue;
+
+  /// Optional compound requirements.
+  ///
+  /// Only populated when [condition] == 'compound'. Consumed by
+  /// [CompoundBadgeEngine.evaluate].
+  ///
+  /// Expected shape (Supabase `badges.requirements` jsonb):
+  /// ```json
+  /// {
+  ///   "all_of": ["isha_congregation", "fajr_congregation", "witr", "shaf"],
+  ///   "min_sunnah_rakat": 12,
+  ///   "has_duha": true
+  /// }
+  /// ```
+  final Map<String, dynamic>? requirements;
+
   final int rewardXp;
   final int rewardHasanat;
   final bool isSecret;
@@ -69,13 +85,17 @@ class Badge {
     required this.category,
     required this.condition,
     this.targetValue,
+    this.requirements,
     this.rewardXp = 0,
     this.rewardHasanat = 0,
     this.isSecret = false,
   });
 
+  /// True when the badge's unlock logic is delegated to
+  /// [CompoundBadgeEngine] instead of the simple [BadgeContext] comparison.
+  bool get isCompound => condition == 'compound' && requirements != null;
+
   IconData get iconData {
-    // Map string keys to Material icons
     const map = {
       'wb_twilight': Icons.wb_twilight,
       'mosque': Icons.mosque,
@@ -86,6 +106,7 @@ class Badge {
       'workspace_premium': Icons.workspace_premium,
       'star': Icons.star,
       'sparkle': Icons.auto_awesome,
+      'wb_sunny': Icons.wb_sunny,
     };
     return map[icon] ?? Icons.emoji_events;
   }
@@ -100,11 +121,20 @@ class Badge {
       category: BadgeCategory.values.byName(json['category'] as String),
       condition: json['condition'] as String,
       targetValue: json['target_value'] as int?,
+      requirements: json['requirements'] != null
+          ? Map<String, dynamic>.from(json['requirements'] as Map)
+          : null,
       rewardXp: json['reward_xp'] as int? ?? 0,
       rewardHasanat: json['reward_hasanat'] as int? ?? 0,
       isSecret: json['is_secret'] as bool? ?? false,
     );
   }
+
+  /// Debug helper.
+  @override
+  String toString() =>
+      'Badge($id, tier: ${tier.name}, category: ${category.name}, '
+      'condition: $condition, compound: $isCompound)';
 }
 
 class UserBadge {

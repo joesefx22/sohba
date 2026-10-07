@@ -3,6 +3,7 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../../models/admin_alert.dart';
 import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 
@@ -65,13 +66,17 @@ class _AdminAlertsPageState extends State<AdminAlertsPage> {
       ),
       body: SafeArea(
         child: _loading
-            ? const Center(child: CircularProgressIndicator(color: AppColors.teal))
+            ? const Center(
+                child: CircularProgressIndicator(color: AppColors.mint),
+              )
             : _alerts.isEmpty
-                ? const Center(
+                ? Center(
                     child: Padding(
-                      padding: EdgeInsets.all(32),
-                      child: Text('لا توجد حالات تحتاج متابعة',
-                          style: TextStyle(color: AppColors.textSecondary)),
+                      padding: const EdgeInsets.all(32),
+                      child: Text(
+                        'لا توجد حالات تحتاج متابعة',
+                        style: AppText.caption,
+                      ),
                     ),
                   )
                 : ListView.builder(
@@ -83,7 +88,7 @@ class _AdminAlertsPageState extends State<AdminAlertsPage> {
                           ? AppColors.error
                           : a.severity == 'normal'
                               ? AppColors.warning
-                              : AppColors.teal;
+                              : AppColors.mint;
                       return GlassContainer(
                         margin: const EdgeInsets.only(bottom: 10),
                         padding: const EdgeInsets.all(14),
@@ -104,15 +109,15 @@ class _AdminAlertsPageState extends State<AdminAlertsPage> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  Text(a.title,
-                                      style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          color: AppColors.text)),
+                                  Text(
+                                    a.title,
+                                    style: AppText.body.copyWith(
+                                      fontWeight: FontWeight.bold,
+                                      color: AppColors.text,
+                                    ),
+                                  ),
                                   const SizedBox(height: 2),
-                                  Text(a.message,
-                                      style: const TextStyle(
-                                          fontSize: 12,
-                                          color: AppColors.textSecondary)),
+                                  Text(a.message, style: AppText.caption),
                                 ],
                               ),
                             ),

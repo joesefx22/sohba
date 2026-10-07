@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+
 import '../../providers/auth_provider.dart';
+import '../../theme/app_colors.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 import '../../widgets/app_button.dart';
@@ -58,18 +61,23 @@ class _LoginPageState extends State<LoginPage> {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.mosque, size: 80, color: Color(0xFFD4AF37)),
+                  const Icon(Icons.mosque, size: 80, color: AppColors.gold),
                   const SizedBox(height: 16),
-                  const Text('صحبة',
-                      style: TextStyle(
-                          fontSize: 48,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFFD4AF37),
-                          letterSpacing: 2)),
+                  Text(
+                    'صحبة',
+                    style: AppText.heading.copyWith(
+                      fontSize: 48,
+                      color: AppColors.gold,
+                      letterSpacing: 2,
+                    ),
+                  ),
                   const SizedBox(height: 8),
-                  Text('رفيقك على طريق الطاعة',
-                      style: TextStyle(
-                          fontSize: 16, color: Colors.white.withAlpha(180))),
+                  Text(
+                    'رفيقك على طريق الطاعة',
+                    style: AppText.body.copyWith(
+                      color: Colors.white.withAlpha(180),
+                    ),
+                  ),
                   const SizedBox(height: 40),
                   GlassContainer(
                     padding: const EdgeInsets.all(24),
@@ -83,8 +91,9 @@ class _LoginPageState extends State<LoginPage> {
                             prefixIcon: Icon(Icons.email_outlined),
                             border: OutlineInputBorder(),
                           ),
-                          validator: (v) =>
-                              (v == null || !v.contains('@')) ? 'بريد غير صالح' : null,
+                          validator: (v) => (v == null || !v.contains('@'))
+                              ? 'بريد غير صالح'
+                              : null,
                         ),
                         const SizedBox(height: 16),
                         TextFormField(

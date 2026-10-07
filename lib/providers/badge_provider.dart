@@ -1,4 +1,3 @@
-import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
@@ -7,6 +6,7 @@ import '../models/badge.dart';
 import '../models/prayer_log.dart';
 import '../repositories/badge_repository.dart';
 import '../services/badge_engine.dart';
+import '../services/compound_badge_engine.dart';
 
 class BadgeProvider extends ChangeNotifier {
   late final BadgeRepository _repo;
@@ -33,6 +33,10 @@ class BadgeProvider extends ChangeNotifier {
   List<Badge> byCategory(BadgeCategory category) =>
       _allBadges.where((b) => b.category == category).toList();
 
+  // ============================================
+  // LOAD
+  // ============================================
+
   Future<void> loadForUser(String userId) async {
     try {
       final results = await Future.wait([
@@ -53,20 +57,38 @@ class BadgeProvider extends ChangeNotifier {
     }
   }
 
-  /// Evaluate badges using a full context computed from 60 days of logs +
-  /// today's athkar progress. This replaces the old inline-only evaluation.
+  // ============================================
+  // EVALUATE — simple + compound
+  // ============================================
+
   Future<List<Badge>> evaluateAndUnlock({
     required String userId,
     required List<PrayerLog> recentLogs,
     required List<AthkarItem> athkarItemsToday,
     required Map<String, bool> athkarCompletedToday,
   }) async {
+    final unlocked = <Badge>[];
+
+    // 1. Simple conditions (streaks, totals)
     final ctx = BadgeEngine.compute(
       prayerLogs: recentLogs,
       athkarItemsToday: athkarItemsToday,
       athkarProgressToday: athkarCompletedToday,
     );
-    return checkConditions(userId: userId, context: ctx);
+    unlocked.addAll(await checkConditions(userId: userId, context: ctx));
+
+    // 2. Compound conditions (all_of, min_sunnah_rakat, ...)
+    unlocked.addAll(await _evaluateCompound(
+      userId: userId,
+      recentLogs: recentLogs,
+    ));
+
+    if (unlocked.isNotEmpty) {
+      _justUnlocked = unlocked.first;
+      notifyListeners();
+    }
+
+    return unlocked;
   }
 
   Future<List<Badge>> checkConditions({
@@ -77,6 +99,7 @@ class BadgeProvider extends ChangeNotifier {
 
     for (final badge in _allBadges) {
       if (_unlockedIds.contains(badge.id)) continue;
+      if (badge.isCompound) continue; // handled by _evaluateCompound
 
       final current = context.valueFor(badge.condition);
       final target = badge.targetValue ?? 1;
@@ -88,9 +111,29 @@ class BadgeProvider extends ChangeNotifier {
       }
     }
 
-    if (unlocked.isNotEmpty) {
-      _justUnlocked = unlocked.first;
-      notifyListeners();
+    return unlocked;
+  }
+
+  Future<List<Badge>> _evaluateCompound({
+    required String userId,
+    required List<PrayerLog> recentLogs,
+  }) async {
+    final unlocked = <Badge>[];
+
+    for (final badge in _allBadges) {
+      if (_unlockedIds.contains(badge.id)) continue;
+      if (!badge.isCompound) continue;
+
+      final ok = CompoundBadgeEngine.evaluate(
+        requirements: badge.requirements!,
+        recentLogs: recentLogs,
+      );
+
+      if (ok) {
+        await _repo.unlockBadge(userId: userId, badgeId: badge.id);
+        _unlockedIds.add(badge.id);
+        unlocked.add(badge);
+      }
     }
 
     return unlocked;

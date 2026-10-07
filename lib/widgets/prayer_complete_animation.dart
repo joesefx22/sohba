@@ -1,12 +1,15 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:confetti/confetti.dart';
 
 import '../models/prayer_log.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 
-/// Full-screen celebration shown after a prayer is recorded.
+/// Calm success moment (~1.1s): check appears -> "+N حسنات" -> drifts up
+/// toward the hasanat counter -> streak pulse -> auto-close. No confetti,
+/// no elastic curves. Tap anywhere to dismiss early.
+/// Public API unchanged.
 class PrayerCompleteAnimation extends StatefulWidget {
   final PrayerName prayer;
   final PrayerStatus status;
@@ -51,307 +54,172 @@ class PrayerCompleteAnimation extends StatefulWidget {
 }
 
 class _PrayerCompleteAnimationState extends State<PrayerCompleteAnimation>
-    with TickerProviderStateMixin {
-  late AnimationController _cardCtrl;
-  late AnimationController _iconCtrl;
-  late AnimationController _pointCtrl;
-  late AnimationController _buttonCtrl;
-  late ConfettiController _confetti;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+  late final Animation<double> _card, _check, _points, _streak, _fly;
+  bool _closed = false;
 
-  late Animation<double> _cardScale;
-  late Animation<double> _cardSlide;
-  late Animation<double> _iconScale;
-  late Animation<int> _pointCount;
-  late Animation<double> _buttonFade;
+  Animation<double> _iv(double a, double b, [Curve c = Curves.easeOutCubic]) =>
+      CurvedAnimation(parent: _c, curve: Interval(a, b, curve: c));
 
   @override
   void initState() {
     super.initState();
-
-    _cardCtrl = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _cardScale = Tween(begin: 0.7, end: 1.0).animate(
-      CurvedAnimation(parent: _cardCtrl, curve: Curves.elasticOut),
-    );
-    _cardSlide = Tween(begin: 0.3, end: 0.0).animate(
-      CurvedAnimation(parent: _cardCtrl, curve: Curves.easeOut),
-    );
-
-    _iconCtrl = AnimationController(
-      duration: const Duration(milliseconds: 600),
-      vsync: this,
-    );
-    _iconScale = Tween(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _iconCtrl, curve: Curves.elasticOut),
-    );
-
-    _pointCtrl = AnimationController(
-      duration: const Duration(milliseconds: 900),
-      vsync: this,
-    );
-    _pointCount = IntTween(begin: 0, end: widget.hasanat).animate(
-      CurvedAnimation(parent: _pointCtrl, curve: Curves.easeOut),
-    );
-
-    _buttonCtrl = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _buttonFade = CurvedAnimation(parent: _buttonCtrl, curve: Curves.easeOut);
-
-    _confetti = ConfettiController(duration: const Duration(seconds: 2));
-
-    _start();
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 1100));
+    _card = _iv(0.0, 0.25);
+    _check = _iv(0.08, 0.38);
+    _points = _iv(0.32, 0.58);
+    _streak = _iv(0.55, 0.85, Curves.linear);
+    _fly = _iv(0.68, 1.0, Curves.easeInCubic);
+    WidgetsBinding.instance.addPostFrameCallback((_) => _run());
   }
 
-  Future<void> _start() async {
-    HapticFeedback.mediumImpact();
-    _cardCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 250));
+  Future<void> _run() async {
     if (!mounted) return;
-    _iconCtrl.forward();
-    _confetti.play();
-    HapticFeedback.heavyImpact();
-    await Future.delayed(const Duration(milliseconds: 400));
-    if (!mounted) return;
-    _pointCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 900));
-    if (!mounted) return;
-    _buttonCtrl.forward();
+    if (MediaQuery.disableAnimationsOf(context)) {
+      _c.value = 1;
+    } else {
+      HapticFeedback.lightImpact();
+      await _c.forward();
+    }
+    await Future.delayed(const Duration(milliseconds: 300));
+    _close();
+  }
+
+  void _close() {
+    if (_closed || !mounted) return;
+    _closed = true;
+    widget.onComplete();
   }
 
   @override
   void dispose() {
-    _cardCtrl.dispose();
-    _iconCtrl.dispose();
-    _pointCtrl.dispose();
-    _buttonCtrl.dispose();
-    _confetti.dispose();
+    _c.dispose();
     super.dispose();
-  }
-
-  void _skip() {
-    _cardCtrl.value = 1;
-    _iconCtrl.value = 1;
-    _pointCtrl.value = 1;
-    _buttonCtrl.value = 1;
   }
 
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
-      onTap: _buttonCtrl.isCompleted ? widget.onComplete : _skip,
+      behavior: HitTestBehavior.opaque,
+      onTap: _close,
       child: Material(
         color: Colors.transparent,
-        child: Stack(
-          children: [
-            Container(color: Colors.black.withAlpha(210)),
-            Align(
-              alignment: Alignment.topCenter,
-              child: ConfettiWidget(
-                confettiController: _confetti,
-                blastDirection: pi / 2,
-                maxBlastForce: 5,
-                minBlastForce: 2,
-                emissionFrequency: 0.05,
-                numberOfParticles: 25,
-                gravity: 0.15,
-                shouldLoop: false,
-                colors: const [
-                  AppColors.gold,
-                  AppColors.teal,
-                  AppColors.primaryStart,
-                  Colors.white,
-                ],
+        child: AnimatedBuilder(
+          animation: _c,
+          builder: (_, __) => Stack(
+            children: [
+              Positioned.fill(
+                child: ColoredBox(
+                    color: Colors.black
+                        .withAlpha((150 * _card.value).round())),
               ),
-            ),
-            Center(
-              child: SlideTransition(
-                position: _cardSlide.drive(
-                  Tween(begin: const Offset(0, 1), end: Offset.zero),
-                ),
-                child: ScaleTransition(
-                  scale: _cardScale,
-                  child: _buildCard(),
+              Center(
+                child: Opacity(
+                  opacity: _card.value,
+                  child: Transform.translate(
+                    offset: Offset(0, 12 * (1 - _card.value)),
+                    child: Transform.scale(
+                      scale: 0.96 + 0.04 * _card.value,
+                      child: _buildCard(),
+                    ),
+                  ),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
   }
 
   Widget _buildCard() {
+    final pulse = 1 + 0.08 * sin(pi * _streak.value);
+    final count = (widget.hasanat * _points.value).round();
+
     return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 32),
-      padding: const EdgeInsets.all(28),
+      width: 270,
+      padding: const EdgeInsets.fromLTRB(24, 28, 24, 24),
       decoration: BoxDecoration(
-        gradient: const LinearGradient(
-          colors: [AppColors.surface, AppColors.surfaceElevated],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppColors.gold.withAlpha(128), width: 2),
+        color: AppColors.surfaceElevated,
+        borderRadius: BorderRadius.circular(28),
+        border: Border.all(color: AppColors.emerald.withAlpha(60)),
         boxShadow: [
           BoxShadow(
-            color: AppColors.gold.withAlpha(80),
-            blurRadius: 30,
-            spreadRadius: 2,
-          ),
+              color: AppColors.emerald.withAlpha(40),
+              blurRadius: 30,
+              spreadRadius: -4),
         ],
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: const [
-              Icon(Icons.check_circle, color: AppColors.gold, size: 26),
-              SizedBox(width: 8),
-              Text(
-                'تقبّل الله',
-                style: TextStyle(
-                  fontSize: 20,
-                  fontWeight: FontWeight.bold,
-                  color: AppColors.gold,
-                ),
-              ),
-              SizedBox(width: 8),
-              Icon(Icons.check_circle, color: AppColors.gold, size: 26),
-            ],
-          ),
-          const SizedBox(height: 20),
-          ScaleTransition(
-            scale: _iconScale,
-            child: Container(
-              width: 96,
-              height: 96,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: widget.status.color.withAlpha(50),
-                border: Border.all(color: widget.status.color, width: 3),
-                boxShadow: [
-                  BoxShadow(
-                    color: widget.status.color.withAlpha(120),
-                    blurRadius: 24,
-                  ),
-                ],
-              ),
-              child: Icon(
-                widget.prayer.icon,
-                size: 48,
-                color: widget.status.color,
-              ),
-            ),
-          ),
-          const SizedBox(height: 18),
-          Text(
-            widget.prayer.arabicName,
-            style: const TextStyle(
-              fontSize: 26,
-              fontWeight: FontWeight.bold,
-              color: AppColors.text,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            widget.status.arabicLabel,
-            style: TextStyle(
-              fontSize: 16,
-              color: widget.status.color,
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          if (widget.hasanat > 0) ...[
-            const SizedBox(height: 24),
-            AnimatedBuilder(
-              animation: _pointCount,
-              builder: (_, __) => Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          Opacity(
+            opacity: _check.value,
+            child: Transform.scale(
+              scale: 0.85 + 0.15 * _check.value,
+              child: Container(
+                width: 72,
+                height: 72,
                 decoration: BoxDecoration(
-                  color: AppColors.gold.withAlpha(30),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: AppColors.gold.withAlpha(90)),
+                  shape: BoxShape.circle,
+                  color: AppColors.emerald.withAlpha(30),
+                  border: Border.all(color: AppColors.emerald.withAlpha(120)),
                 ),
+                child: const Icon(Icons.check, size: 38, color: AppColors.mint),
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          Text(widget.prayer.arabicName,
+              style: AppText.heading.copyWith(fontSize: 24)),
+          const SizedBox(height: 2),
+          Text(widget.status.arabicLabel,
+              style: AppText.body.copyWith(color: widget.status.color)),
+          const SizedBox(height: 4),
+          Text('تقبّل الله', style: AppText.caption.copyWith(fontSize: 13)),
+          if (widget.hasanat > 0) ...[
+            const SizedBox(height: 18),
+            Opacity(
+              opacity: (_points.value * (1 - _fly.value)).clamp(0.0, 1.0),
+              child: Transform.translate(
+                offset: Offset(0, -56 * _fly.value),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.stars, color: AppColors.gold, size: 28),
-                    const SizedBox(width: 10),
-                    Text(
-                      '+${_pointCount.value}',
-                      style: const TextStyle(
-                        fontSize: 32,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.gold,
-                      ),
-                    ),
+                    const Icon(Icons.auto_awesome,
+                        size: 18, color: AppColors.goldBright),
+                    const SizedBox(width: 8),
+                    Text('+$count',
+                        style: AppText.number
+                            .copyWith(fontSize: 30, color: AppColors.gold)),
                     const SizedBox(width: 6),
-                    const Text(
-                      'حسنة',
-                      style: TextStyle(fontSize: 16, color: AppColors.gold),
-                    ),
+                    Text('حسنات',
+                        style: AppText.body.copyWith(color: AppColors.gold)),
                   ],
                 ),
               ),
             ),
           ],
           if (widget.streak != null && widget.streak! > 0) ...[
-            const SizedBox(height: 16),
-            Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.orange.withAlpha(38),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.orange.withAlpha(102)),
-              ),
+            const SizedBox(height: 14),
+            Transform.scale(
+              scale: pulse,
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   const Icon(Icons.local_fire_department,
-                      color: Colors.orange, size: 20),
-                  const SizedBox(width: 8),
-                  Text(
-                    '${widget.streak} يوم مواصلة',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.orange,
-                    ),
-                  ),
+                      size: 18, color: AppColors.streak),
+                  const SizedBox(width: 4),
+                  Text('${widget.streak} يوم متواصل',
+                      style: AppText.caption.copyWith(
+                          color: AppColors.streak,
+                          fontWeight: FontWeight.w600)),
                 ],
               ),
             ),
           ],
-          const SizedBox(height: 24),
-          FadeTransition(
-            opacity: _buttonFade,
-            child: SizedBox(
-              width: double.infinity,
-              child: ElevatedButton(
-                onPressed: _buttonCtrl.isCompleted ? widget.onComplete : null,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryStart,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: const Text(
-                  'الحمد لله',
-                  style:
-                      TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ),
-          ),
         ],
       ),
     );

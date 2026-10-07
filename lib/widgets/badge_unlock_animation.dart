@@ -1,11 +1,16 @@
-import 'dart:math';
+import 'dart:async';
 import 'package:flutter/material.dart' hide Badge;
 import 'package:flutter/services.dart';
 import 'package:confetti/confetti.dart';
 
 import '../models/badge.dart';
 import '../theme/app_colors.dart';
+import '../theme/app_theme.dart';
 
+/// Premium achievement reveal:
+/// dark overlay -> ambient glow -> medal enters slowly -> light sweep ->
+/// "ميدالية جديدة" -> name -> description -> a few small particles.
+/// Public API unchanged.
 class BadgeUnlockAnimation extends StatefulWidget {
   final Badge badge;
   final VoidCallback onComplete;
@@ -37,66 +42,55 @@ class BadgeUnlockAnimation extends StatefulWidget {
 }
 
 class _BadgeUnlockAnimationState extends State<BadgeUnlockAnimation>
-    with TickerProviderStateMixin {
-  late AnimationController _badgeCtrl;
-  late AnimationController _textCtrl;
-  late AnimationController _btnCtrl;
-  late ConfettiController _confetti;
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _c;
+  late final ConfettiController _confetti;
+  late final Animation<double> _overlay, _glow, _badge, _sweep, _label, _name,
+      _desc, _btn;
+  final _timers = <Timer>[];
 
-  late Animation<double> _badgeScale;
-  late Animation<double> _badgeRotate;
-  late Animation<double> _textFade;
-  late Animation<double> _btnFade;
+  Animation<double> _iv(double a, double b, [Curve c = Curves.easeOutCubic]) =>
+      CurvedAnimation(parent: _c, curve: Interval(a, b, curve: c));
 
   @override
   void initState() {
     super.initState();
+    _c = AnimationController(
+        vsync: this, duration: const Duration(milliseconds: 3200));
+    _confetti = ConfettiController(duration: const Duration(seconds: 1));
 
-    _badgeCtrl = AnimationController(
-      duration: const Duration(milliseconds: 900),
-      vsync: this,
-    );
-    _badgeScale = Tween(begin: 0.0, end: 1.0).animate(
-      CurvedAnimation(parent: _badgeCtrl, curve: Curves.elasticOut),
-    );
-    _badgeRotate = Tween(begin: -0.4, end: 0.0).animate(
-      CurvedAnimation(parent: _badgeCtrl, curve: Curves.easeOut),
-    );
+    _overlay = _iv(0.0, 0.1);
+    _glow = _iv(0.05, 0.3);
+    _badge = _iv(0.1, 0.4);
+    _sweep = _iv(0.4, 0.58, Curves.easeInOut);
+    _label = _iv(0.55, 0.68);
+    _name = _iv(0.62, 0.76);
+    _desc = _iv(0.72, 0.86);
+    _btn = _iv(0.86, 1.0);
 
-    _textCtrl = AnimationController(
-      duration: const Duration(milliseconds: 500),
-      vsync: this,
-    );
-    _textFade = CurvedAnimation(parent: _textCtrl, curve: Curves.easeOut);
-
-    _btnCtrl = AnimationController(
-      duration: const Duration(milliseconds: 300),
-      vsync: this,
-    );
-    _btnFade = CurvedAnimation(parent: _btnCtrl, curve: Curves.easeOut);
-
-    _confetti = ConfettiController(duration: const Duration(seconds: 3));
-
-    _start();
-  }
-
-  Future<void> _start() async {
-    HapticFeedback.heavyImpact();
-    _badgeCtrl.forward();
-    _confetti.play();
-    await Future.delayed(const Duration(milliseconds: 500));
-    if (!mounted) return;
-    _textCtrl.forward();
-    await Future.delayed(const Duration(milliseconds: 600));
-    if (!mounted) return;
-    _btnCtrl.forward();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      if (MediaQuery.disableAnimationsOf(context)) {
+        _c.value = 1;
+        return;
+      }
+      _c.forward();
+      // Heavy haptic only when the medal lands.
+      _timers.add(Timer(const Duration(milliseconds: 1150),
+          () => HapticFeedback.heavyImpact()));
+      // Small, brief particles after the text is in.
+      _timers.add(Timer(const Duration(milliseconds: 2000), () {
+        if (mounted) _confetti.play();
+      }));
+    });
   }
 
   @override
   void dispose() {
-    _badgeCtrl.dispose();
-    _textCtrl.dispose();
-    _btnCtrl.dispose();
+    for (final t in _timers) {
+      t.cancel();
+    }
+    _c.dispose();
     _confetti.dispose();
     super.dispose();
   }
@@ -107,129 +101,134 @@ class _BadgeUnlockAnimationState extends State<BadgeUnlockAnimation>
 
     return Material(
       color: Colors.transparent,
-      child: Stack(
-        children: [
-          Container(color: Colors.black.withAlpha(220)),
-          Align(
-            alignment: Alignment.topCenter,
-            child: ConfettiWidget(
-              confettiController: _confetti,
-              blastDirection: pi / 2,
-              maxBlastForce: 6,
-              minBlastForce: 3,
-              emissionFrequency: 0.04,
-              numberOfParticles: 35,
-              gravity: 0.12,
-              shouldLoop: false,
-              colors: [color, AppColors.gold, Colors.white, AppColors.teal],
+      child: AnimatedBuilder(
+        animation: _c,
+        builder: (_, __) => Stack(
+          alignment: Alignment.center,
+          children: [
+            Positioned.fill(
+              child: ColoredBox(
+                  color: Colors.black.withAlpha((225 * _overlay.value).round())),
             ),
-          ),
-          Center(
-            child: Column(
+            // Ambient glow
+            Opacity(
+              opacity: _glow.value,
+              child: Container(
+                width: 460,
+                height: 460,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  gradient: RadialGradient(colors: [
+                    color.withAlpha(70),
+                    Colors.transparent,
+                  ]),
+                ),
+              ),
+            ),
+            Align(
+              alignment: Alignment.topCenter,
+              child: ConfettiWidget(
+                confettiController: _confetti,
+                blastDirection: 3.14159 / 2,
+                maxBlastForce: 4,
+                minBlastForce: 2,
+                emissionFrequency: 0.04,
+                numberOfParticles: 10,
+                gravity: 0.1,
+                shouldLoop: false,
+                colors: [color, AppColors.gold, Colors.white],
+              ),
+            ),
+            Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                FadeTransition(
-                  opacity: _textFade,
-                  child: const Text(
-                    'ميدالية جديدة!',
-                    style: TextStyle(
-                      fontSize: 26,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
+                Opacity(
+                  opacity: _badge.value,
+                  child: Transform.scale(
+                    scale: 0.85 + 0.15 * _badge.value,
+                    child: _medal(color),
+                  ),
+                ),
+                const SizedBox(height: 28),
+                Opacity(
+                  opacity: _label.value,
+                  child: Text('ميدالية جديدة',
+                      style: AppText.caption.copyWith(
+                          fontSize: 14,
+                          color: AppColors.goldBright,
+                          letterSpacing: 1.2)),
+                ),
+                const SizedBox(height: 8),
+                Opacity(
+                  opacity: _name.value,
+                  child: Transform.translate(
+                    offset: Offset(0, 8 * (1 - _name.value)),
+                    child: Column(
+                      children: [
+                        Text(widget.badge.nameAr,
+                            textAlign: TextAlign.center,
+                            style: AppText.heading.copyWith(fontSize: 28)),
+                        const SizedBox(height: 10),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 14, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: color.withAlpha(40),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(color: color.withAlpha(130)),
+                          ),
+                          child: Text(widget.badge.tier.labelAr,
+                              style: AppText.caption.copyWith(
+                                  color: color, fontWeight: FontWeight.w600)),
+                        ),
+                      ],
                     ),
+                  ),
+                ),
+                const SizedBox(height: 14),
+                Opacity(
+                  opacity: _desc.value,
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 40),
+                    child: Text(widget.badge.description,
+                        textAlign: TextAlign.center,
+                        style: AppText.body
+                            .copyWith(color: Colors.white.withAlpha(180))),
                   ),
                 ),
                 const SizedBox(height: 32),
-                AnimatedBuilder(
-                  animation: _badgeCtrl,
-                  builder: (_, __) => Transform.scale(
-                    scale: _badgeScale.value,
-                    child: Transform.rotate(
-                      angle: _badgeRotate.value,
-                      child: _buildMedal(color),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 24),
-                FadeTransition(
-                  opacity: _textFade,
-                  child: Column(
-                    children: [
-                      Text(
-                        widget.badge.nameAr,
-                        style: const TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
-                      ),
-                      const SizedBox(height: 8),
-                      Container(
+                Opacity(
+                  opacity: _btn.value,
+                  child: IgnorePointer(
+                    ignoring: _btn.value < 0.5,
+                    child: GestureDetector(
+                      onTap: widget.onComplete,
+                      child: Container(
                         padding: const EdgeInsets.symmetric(
-                            horizontal: 14, vertical: 5),
+                            horizontal: 44, vertical: 14),
                         decoration: BoxDecoration(
-                          color: color.withAlpha(51),
-                          borderRadius: BorderRadius.circular(16),
-                          border:
-                              Border.all(color: color.withAlpha(150)),
+                          gradient: AppColors.progressGradient,
+                          borderRadius: BorderRadius.circular(30),
                         ),
-                        child: Text(
-                          widget.badge.tier.labelAr.toUpperCase(),
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: color,
-                            letterSpacing: 1.5,
-                          ),
-                        ),
+                        child: Text('ما شاء الله',
+                            style: AppText.section.copyWith(
+                                fontSize: 16, color: AppColors.background)),
                       ),
-                      const SizedBox(height: 16),
-                      Padding(
-                        padding:
-                            const EdgeInsets.symmetric(horizontal: 40),
-                        child: Text(
-                          widget.badge.description,
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 15,
-                            color: Colors.white.withAlpha(180),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 32),
-                FadeTransition(
-                  opacity: _btnFade,
-                  child: ElevatedButton(
-                    onPressed: widget.onComplete,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: color,
-                      foregroundColor: Colors.black87,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 48, vertical: 14),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                    ),
-                    child: const Text(
-                      'ما شاء الله!',
-                      style: TextStyle(
-                          fontSize: 17, fontWeight: FontWeight.bold),
                     ),
                   ),
                 ),
               ],
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildMedal(Color color) {
-    return Container(
+  Widget _medal(Color color) {
+    // Light sweep: a soft white band travelling across the medal.
+    final x0 = -2.0 + 3.5 * _sweep.value;
+    final medal = Container(
       width: 140,
       height: 140,
       decoration: BoxDecoration(
@@ -239,20 +238,26 @@ class _BadgeUnlockAnimationState extends State<BadgeUnlockAnimation>
           end: Alignment.bottomRight,
           colors: [color, Color.lerp(color, Colors.black, 0.35)!],
         ),
-        border: Border.all(color: color, width: 4),
+        border: Border.all(color: color, width: 3),
         boxShadow: [
-          BoxShadow(
-            color: color.withAlpha(140),
-            blurRadius: 32,
-            spreadRadius: 4,
-          ),
+          BoxShadow(color: color.withAlpha(110), blurRadius: 36, spreadRadius: 2),
         ],
       ),
-      child: Icon(
-        widget.badge.iconData,
-        size: 64,
-        color: Colors.white,
-      ),
+      child: Icon(widget.badge.iconData, size: 64, color: Colors.white),
+    );
+
+    return ShaderMask(
+      blendMode: BlendMode.srcATop,
+      shaderCallback: (rect) => LinearGradient(
+        begin: Alignment(x0, -0.4),
+        end: Alignment(x0 + 1.0, 0.4),
+        colors: [
+          Colors.transparent,
+          Colors.white.withAlpha(120),
+          Colors.transparent,
+        ],
+      ).createShader(rect),
+      child: medal,
     );
   }
 }
