@@ -44,7 +44,7 @@ class GlassScaffold extends StatelessWidget {
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   gradient: RadialGradient(colors: [
-                    AppColors.emerald.withOpacity(0.10),
+                    AppColors.emerald.withValues(alpha: 0.10),
                     Colors.transparent,
                   ]),
                 ),

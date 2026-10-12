@@ -66,6 +66,7 @@ class BadgeProvider extends ChangeNotifier {
     required List<PrayerLog> recentLogs,
     required List<AthkarItem> athkarItemsToday,
     required Map<String, bool> athkarCompletedToday,
+    Map<String, Map<String, dynamic>> qiyamLogsByDate = const {},
   }) async {
     final unlocked = <Badge>[];
 
@@ -77,10 +78,11 @@ class BadgeProvider extends ChangeNotifier {
     );
     unlocked.addAll(await checkConditions(userId: userId, context: ctx));
 
-    // 2. Compound conditions (all_of, min_sunnah_rakat, ...)
+    // 2. Compound conditions
     unlocked.addAll(await _evaluateCompound(
       userId: userId,
       recentLogs: recentLogs,
+      qiyamLogsByDate: qiyamLogsByDate,
     ));
 
     if (unlocked.isNotEmpty) {
@@ -99,7 +101,7 @@ class BadgeProvider extends ChangeNotifier {
 
     for (final badge in _allBadges) {
       if (_unlockedIds.contains(badge.id)) continue;
-      if (badge.isCompound) continue; // handled by _evaluateCompound
+      if (badge.isCompound) continue;
 
       final current = context.valueFor(badge.condition);
       final target = badge.targetValue ?? 1;
@@ -117,6 +119,7 @@ class BadgeProvider extends ChangeNotifier {
   Future<List<Badge>> _evaluateCompound({
     required String userId,
     required List<PrayerLog> recentLogs,
+    required Map<String, Map<String, dynamic>> qiyamLogsByDate,
   }) async {
     final unlocked = <Badge>[];
 
@@ -127,6 +130,7 @@ class BadgeProvider extends ChangeNotifier {
       final ok = CompoundBadgeEngine.evaluate(
         requirements: badge.requirements!,
         recentLogs: recentLogs,
+        qiyamLogsByDate: qiyamLogsByDate,
       );
 
       if (ok) {

@@ -1,23 +1,22 @@
-import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-import '../models/prayer_log.dart';
-import 'adhan_service.dart';
-
-/// إدارة إعدادات الإشعارات + حساب جدول اليوم.
+/// User preferences for notifications.
 ///
-/// ⚠️ TODO (production): اربط هذه الخدمة بـ `flutter_local_notifications`
-/// أو FCM لإرسال الإشعارات فعليًا. حاليًا نحفظ الإعدادات ونحسب الجدول فقط.
+/// Owns the WHAT (which notifications are enabled) — the WHEN and HOW
+/// live in [NotificationScheduler] and [PushNotificationService].
 class NotificationService {
   NotificationService._();
 
-  static const _keyEnabled = 'notif_enabled';
-  static const _keyAdhanEnabled = 'notif_adhan';
-  static const _keyReminderMinutes = 'notif_reminder_minutes';
-  static const _keyStreakReminderEnabled = 'notif_streak';
-  static const _keyStreakReminderHour = 'notif_streak_hour';
+  static const _keyEnabled              = 'notif_enabled';
+  static const _keyAdhanEnabled         = 'notif_adhan';
+  static const _keyReminderMinutes      = 'notif_reminder_minutes';
+  static const _keyStreakReminder       = 'notif_streak';
+  static const _keyStreakReminderHour   = 'notif_streak_hour';
+  static const _keyOnboardingShown      = 'notif_onboarding_shown';
 
-  // ── Preferences ────────────────────────────────────────────────
+  // ============================================
+  // MASTER
+  // ============================================
 
   static Future<bool> isEnabled() async {
     final p = await SharedPreferences.getInstance();
@@ -29,6 +28,10 @@ class NotificationService {
     await p.setBool(_keyEnabled, value);
   }
 
+  // ============================================
+  // ADHAN
+  // ============================================
+
   static Future<bool> isAdhanEnabled() async {
     final p = await SharedPreferences.getInstance();
     return p.getBool(_keyAdhanEnabled) ?? true;
@@ -38,6 +41,10 @@ class NotificationService {
     final p = await SharedPreferences.getInstance();
     await p.setBool(_keyAdhanEnabled, value);
   }
+
+  // ============================================
+  // PRE-ADHAN REMINDER
+  // ============================================
 
   static Future<int> reminderMinutes() async {
     final p = await SharedPreferences.getInstance();
@@ -49,19 +56,23 @@ class NotificationService {
     await p.setInt(_keyReminderMinutes, value);
   }
 
+  // ============================================
+  // STREAK REMINDER
+  // ============================================
+
   static Future<bool> isStreakReminderEnabled() async {
     final p = await SharedPreferences.getInstance();
-    return p.getBool(_keyStreakReminderEnabled) ?? true;
+    return p.getBool(_keyStreakReminder) ?? true;
   }
 
   static Future<void> setStreakReminderEnabled(bool value) async {
     final p = await SharedPreferences.getInstance();
-    await p.setBool(_keyStreakReminderEnabled, value);
+    await p.setBool(_keyStreakReminder, value);
   }
 
   static Future<int> streakReminderHour() async {
     final p = await SharedPreferences.getInstance();
-    return p.getInt(_keyStreakReminderHour) ?? 21;
+    return p.getInt(_keyStreakReminderHour) ?? 21; // 9 PM
   }
 
   static Future<void> setStreakReminderHour(int hour) async {
@@ -69,63 +80,18 @@ class NotificationService {
     await p.setInt(_keyStreakReminderHour, hour);
   }
 
-  // ── Schedule building ──────────────────────────────────────────
+  // ============================================
+  // ONBOARDING
+  // ============================================
 
-  static List<PrayerReminder> buildRemindersForToday() {
-    final reminders = <PrayerReminder>[];
-    for (final prayer in PrayerName.values) {
-      final adhan = AdhanService.timeFor(prayer);
-      reminders.add(PrayerReminder(
-        prayer: prayer,
-        title: 'حان وقت ${prayer.arabicName}',
-        body: _bodyFor(prayer),
-        scheduledAt: adhan,
-      ));
-    }
-    return reminders;
+  /// Whether we've already shown the permission request dialog.
+  static Future<bool> hasShownOnboarding() async {
+    final p = await SharedPreferences.getInstance();
+    return p.getBool(_keyOnboardingShown) ?? false;
   }
 
-  static String _bodyFor(PrayerName prayer) {
-    switch (prayer) {
-      case PrayerName.fajr:
-        return 'الصلاة خير من النوم — قم إلى الفجر';
-      case PrayerName.dhuhr:
-        return 'توقف عن العمل واسترح — حان وقت الظهر';
-      case PrayerName.asr:
-        return 'حافظ على الصلاة الوسطى — حان وقت العصر';
-      case PrayerName.maghrib:
-        return 'ادعُ ربك قبل المغرب — حان وقت المغرب';
-      case PrayerName.isha:
-        return 'اختم يومك بالصلاة — حان وقت العشاء';
-    }
+  static Future<void> markOnboardingShown() async {
+    final p = await SharedPreferences.getInstance();
+    await p.setBool(_keyOnboardingShown, true);
   }
-
-  static String describeSchedule() {
-    final reminders = buildRemindersForToday();
-    return reminders
-        .map((r) =>
-            '${r.prayer.arabicName}: ${AdhanService.formatTime(r.scheduledAt)}')
-        .join('\n');
-  }
-
-  static void debugLogSchedule() {
-    debugPrint('جدول إشعارات اليوم:');
-    for (final r in buildRemindersForToday()) {
-      debugPrint('  ${r.prayer.arabicName} — ${AdhanService.formatTime(r.scheduledAt)}');
-    }
-  }
-}
-
-class PrayerReminder {
-  final PrayerName prayer;
-  final String title;
-  final String body;
-  final DateTime scheduledAt;
-
-  const PrayerReminder({
-    required this.prayer,
-    required this.title,
-    required this.body,
-    required this.scheduledAt,
-  });
 }

@@ -29,19 +29,22 @@ dependencies:
   # ---------- Backend ----------
   supabase_flutter: ^2.5.0
 
-  # ---------- Prayer ----------
+  # ---------- Prayer times ----------
   adhan: ^2.0.0
 
-  # ---------- Local ----------
+  # ---------- Local storage ----------
   shared_preferences: ^2.2.0
 
   # ---------- Config ----------
   flutter_dotenv: ^5.1.0
 
-  # ---------- Notifications (optional, real push) ----------
+  # ---------- Notifications ----------
   flutter_local_notifications: ^17.0.0
   timezone: ^0.9.4
   just_audio: ^0.9.36
+
+  # ---------- Deep links ----------
+  app_links: ^6.3.0
 
 dev_dependencies:
   flutter_test:
@@ -49,8 +52,35 @@ dev_dependencies:
   flutter_lints: ^6.0.0
   mocktail: ^1.0.4
 
+  # ---------- Icon + splash generators ----------
+  flutter_launcher_icons: ^0.14.1
+  flutter_native_splash: ^2.4.1
+
 flutter:
   uses-material-design: true
   assets:
     - assets/athkar/
-    - .env
+    - assets/icon/
+    # - assets/audio/    # ← Uncomment when you add adhan.mp3
+
+# ============================================
+# LAUNCHER ICON
+# ============================================
+flutter_launcher_icons:
+  android: "ic_launcher"
+  ios: true
+  image_path: "assets/icon/icon.png"
+  remove_alpha_ios: true
+  min_sdk_android: 21
+  web:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    background_color: "#071612"
+    theme_color: "#D8B65A"
+  windows:
+    generate: true
+    image_path: "assets/icon/icon.png"
+    icon_size: 48
+  macos:
+    generate: true
+    image_path: "assets/icon/icon.png"

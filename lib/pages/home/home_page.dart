@@ -25,6 +25,7 @@ import '../group/group_leaderboard_page.dart';
 import '../lock/lock_screen.dart';
 import '../lessons/daily_lesson_page.dart';
 import '../challenges/challenges_page.dart';
+import '../himmah/himmah_page.dart';                      // ← جديد
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -171,7 +172,8 @@ class _DashboardTab extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('السلام عليكم،', style: AppText.caption.copyWith(fontSize: 13)),
+                Text('السلام عليكم،',
+                    style: AppText.caption.copyWith(fontSize: 13)),
                 Text(auth.displayName,
                     style: AppText.heading.copyWith(fontSize: 24)),
                 if (group != null)
@@ -183,7 +185,8 @@ class _DashboardTab extends StatelessWidget {
               ],
             ),
           ),
-          if (streak.currentStreak > 0) _streakChip(context, streak.currentStreak),
+          if (streak.currentStreak > 0)
+            _streakChip(context, streak.currentStreak),
           _bell(context, notifications),
         ],
       )),
@@ -199,9 +202,12 @@ class _DashboardTab extends StatelessWidget {
           children: [
             Row(
               children: [
-                const Icon(Icons.auto_awesome, color: AppColors.iman, size: 20),
+                const Icon(Icons.auto_awesome,
+                    color: AppColors.iman, size: 20),
                 const SizedBox(width: 8),
-                Text('رصيد الإيمان', style: AppText.body.copyWith(color: AppColors.textSecondary)),
+                Text('رصيد الإيمان',
+                    style: AppText.body
+                        .copyWith(color: AppColors.textSecondary)),
               ],
             ),
             const SizedBox(height: 10),
@@ -270,7 +276,15 @@ class _DashboardTab extends StatelessWidget {
           children: [
             _stat(Icons.stars, '$totalHasanat', 'حسنة', AppColors.gold),
             _divider(),
-            _stat(Icons.diamond_outlined, '$himmah', 'الهمّة', AppColors.textSecondary),
+            _stat(
+              Icons.diamond_outlined,
+              '$himmah',
+              'الهمّة',
+              AppColors.gold,                                     // ← جديد
+              onTap: () => Navigator.of(context).push(            // ← جديد
+                MaterialPageRoute(builder: (_) => const HimmahPage()),
+              ),
+            ),
             _divider(),
             _stat(Icons.emoji_events_outlined, '${badges.unlockedCount}',
                 'ميداليات', AppColors.textSecondary),
@@ -296,7 +310,7 @@ class _DashboardTab extends StatelessWidget {
           children: [
             for (var i = 0; i < sections.length; i++)
               Padding(
-                padding: EdgeInsets.only(bottom: 12),
+                padding: const EdgeInsets.only(bottom: 12),
                 child: AppMotion.entrance(context, sections[i], index: i),
               ),
           ],
@@ -317,7 +331,10 @@ class _DashboardTab extends StatelessWidget {
           children: [
             Text(text, style: AppText.section),
             const Spacer(),
-            if (trailing != null) Text(trailing, style: AppText.numberSmall.copyWith(fontSize: 15, color: AppColors.textSecondary)),
+            if (trailing != null)
+              Text(trailing,
+                  style: AppText.numberSmall
+                      .copyWith(fontSize: 15, color: AppColors.textSecondary)),
           ],
         ),
       );
@@ -414,16 +431,28 @@ class _DashboardTab extends StatelessWidget {
     );
   }
 
-  Widget _stat(IconData icon, String value, String label, Color color) {
+  // ── ✅ جديد: `_stat` بقى يدعم onTap ──────────────────────────
+  Widget _stat(IconData icon, String value, String label, Color color,
+      {VoidCallback? onTap}) {
+    final content = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 20, color: color),
+        const SizedBox(height: 6),
+        Text(value,
+            style: AppText.numberSmall.copyWith(
+                color: color == AppColors.gold ? color : AppColors.text)),
+        Text(label, style: AppText.caption),
+      ],
+    );
+
+    if (onTap == null) return Expanded(child: content);
+
     return Expanded(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 20, color: color),
-          const SizedBox(height: 6),
-          Text(value, style: AppText.numberSmall.copyWith(color: color == AppColors.gold ? color : AppColors.text)),
-          Text(label, style: AppText.caption),
-        ],
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: content,
       ),
     );
   }

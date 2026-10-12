@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../../models/prayer_log.dart';
 import '../../services/adhan_service.dart';
 import '../../services/location_service.dart';
+import '../../services/notification_scheduler.dart';
 import '../../services/notification_service.dart';
 import '../../services/prayer_engine.dart';
+import '../../services/push_notification_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
@@ -24,6 +27,7 @@ class _SettingsPageState extends State<SettingsPage> {
   bool _streakReminder = true;
   int _reminderMinutes = 5;
   String _city = 'القاهرة';
+  bool _systemPermission = false;
   bool _loading = true;
 
   @override
@@ -33,13 +37,46 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Future<void> _load() async {
-    _notifEnabled = await NotificationService.isEnabled();
-    _adhanEnabled = await NotificationService.isAdhanEnabled();
-    _streakReminder = await NotificationService.isStreakReminderEnabled();
-    _reminderMinutes = await NotificationService.reminderMinutes();
-    final loc = await LocationService.current();
-    _city = loc.city;
-    if (mounted) setState(() => _loading = false);
+    final results = await Future.wait([
+      NotificationService.isEnabled(),
+      NotificationService.isAdhanEnabled(),
+      NotificationService.isStreakReminderEnabled(),
+      NotificationService.reminderMinutes(),
+      LocationService.current(),
+      PushNotificationService.hasPermission(),
+    ]);
+
+    if (!mounted) return;
+    setState(() {
+      _notifEnabled = results[0] as bool;
+      _adhanEnabled = results[1] as bool;
+      _streakReminder = results[2] as bool;
+      _reminderMinutes = results[3] as int;
+      _city = (results[4] as ({double lat, double lng, String city})).city;
+      _systemPermission = results[5] as bool;
+      _loading = false;
+    });
+  }
+
+  Future<void> _requestPermission() async {
+    final granted = await PushNotificationService.requestPermissions();
+    if (!mounted) return;
+    setState(() => _systemPermission = granted);
+    if (granted) {
+      AppSnackbar.success(context, 'تم تفعيل الإشعارات');
+      await NotificationScheduler.rescheduleAll();
+    } else {
+      AppSnackbar.error(
+          context, 'لم تُفعَّل الإشعارات — افتح إعدادات النظام');
+    }
+  }
+
+  Future<void> _reschedule() async {
+    try {
+      await NotificationScheduler.rescheduleAll();
+    } catch (e) {
+      debugPrint('reschedule error: $e');
+    }
   }
 
   @override
@@ -75,6 +112,13 @@ class _SettingsPageState extends State<SettingsPage> {
 
                   // ── Notifications ──────────────────────────────────
                   _section('الإشعارات'),
+
+                  // System permission banner
+                  if (!_systemPermission) ...[
+                    _permissionBanner(),
+                    const SizedBox(height: 12),
+                  ],
+
                   _switch(
                     'تفعيل الإشعارات',
                     'استقبل تنبيهات الصلاة والمواصلة',
@@ -82,32 +126,39 @@ class _SettingsPageState extends State<SettingsPage> {
                     (v) async {
                       setState(() => _notifEnabled = v);
                       await NotificationService.setEnabled(v);
+                      await _reschedule();
                     },
                   ),
                   _switch(
-                    'أذان الصلاة',
-                    'تشغيل صوت الأذان عند دخول الوقت',
+                    'الأذان',
+                    'إشعار بصوت مرتفع عند دخول الوقت',
                     _adhanEnabled,
                     (v) async {
                       setState(() => _adhanEnabled = v);
                       await NotificationService.setAdhanEnabled(v);
+                      await _reschedule();
                     },
                   ),
                   _switch(
                     'تذكير المواصلة',
-                    'تنبيه يومي قبل منتصف الليل للحفاظ على سلسلتك',
+                    'تنبيه 9 مساءً قبل منتصف الليل',
                     _streakReminder,
                     (v) async {
                       setState(() => _streakReminder = v);
                       await NotificationService.setStreakReminderEnabled(v);
+                      await _reschedule();
                     },
                   ),
                   _tile(
                     icon: Icons.timer_outlined,
-                    title: 'التذكير قبل الأذان',
-                    subtitle: '$_reminderMinutes دقيقة',
+                    title: 'تذكير قبل الأذان',
+                    subtitle: _reminderMinutes == 0
+                        ? 'معطّل'
+                        : '$_reminderMinutes دقيقة',
                     onTap: _pickReminderMinutes,
                   ),
+                  const SizedBox(height: 12),
+                  _testButton(),
                   const SizedBox(height: 16),
 
                   // ── About ───────────────────────────────────────────
@@ -146,6 +197,68 @@ class _SettingsPageState extends State<SettingsPage> {
     );
   }
 
+  Widget _permissionBanner() {
+    return GlassContainer(
+      padding: const EdgeInsets.all(14),
+      tintColor: AppColors.warning.withAlpha(40),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.warning_amber_rounded,
+                  color: AppColors.warning, size: 22),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'الإشعارات غير مسموح بها في النظام',
+                  style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 6),
+          Text(
+            'افتح الإعدادات واسمح بالإشعارات حتى تصلك تنبيهات الصلاة.',
+            style: AppText.caption,
+          ),
+          const SizedBox(height: 10),
+          Align(
+            alignment: AlignmentDirectional.centerEnd,
+            child: FilledButton.icon(
+              onPressed: _requestPermission,
+              icon: const Icon(Icons.notifications_active, size: 18),
+              label: const Text('سماح'),
+              style: FilledButton.styleFrom(
+                backgroundColor: AppColors.warning,
+                foregroundColor: Colors.black87,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _testButton() {
+    return GlassContainer(
+      child: ListTile(
+        leading: const Icon(Icons.notification_add, color: AppColors.mint),
+        title: const Text(
+          'إشعار تجريبي',
+          style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w500),
+        ),
+        subtitle: Text('سيصل خلال 5 ثوانٍ', style: AppText.caption),
+        trailing: const Icon(Icons.chevron_left),
+        onTap: () async {
+          await NotificationScheduler.sendTest();
+          if (!mounted) return;
+          AppSnackbar.info(context, 'أُرسل — سيصل خلال 5 ثوانٍ');
+        },
+      ),
+    );
+  }
+
   Widget _switch(
     String title,
     String subtitle,
@@ -155,9 +268,13 @@ class _SettingsPageState extends State<SettingsPage> {
     return GlassContainer(
       margin: const EdgeInsets.only(bottom: 8),
       child: SwitchListTile(
-        title: Text(title,
-            style: const TextStyle(
-                color: AppColors.text, fontWeight: FontWeight.w500)),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         subtitle: Text(subtitle, style: AppText.caption),
         value: value,
         onChanged: onChange,
@@ -176,9 +293,13 @@ class _SettingsPageState extends State<SettingsPage> {
       margin: const EdgeInsets.only(bottom: 8),
       child: ListTile(
         leading: Icon(icon, color: AppColors.mint),
-        title: Text(title,
-            style: const TextStyle(
-                color: AppColors.text, fontWeight: FontWeight.w500)),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
         subtitle: Text(subtitle, style: AppText.caption),
         trailing: onTap != null ? const Icon(Icons.chevron_left) : null,
         onTap: onTap,
@@ -227,8 +348,7 @@ class _SettingsPageState extends State<SettingsPage> {
         padding: const EdgeInsets.all(16),
         children: LocationService.presetCities.map((c) {
           return ListTile(
-            title: Text(c.$1,
-                style: const TextStyle(color: AppColors.text)),
+            title: Text(c.$1, style: const TextStyle(color: AppColors.text)),
             onTap: () => Navigator.pop(context, c),
             selected: c.$1 == _city,
             selectedTileColor: AppColors.mint.withAlpha(30),
@@ -244,6 +364,7 @@ class _SettingsPageState extends State<SettingsPage> {
         city: selected.$1,
       );
       AdhanService.setLocation(selected.$2, selected.$3);
+      await _reschedule();
       if (mounted) {
         setState(() => _city = selected.$1);
         AppSnackbar.success(context, 'تم تحديث الموقع');
@@ -262,7 +383,7 @@ class _SettingsPageState extends State<SettingsPage> {
       builder: (_) => ListView(
         padding: const EdgeInsets.all(16),
         children: options.map((m) {
-          final label = m == 0 ? 'عند الأذان مباشرة' : '$m دقيقة';
+          final label = m == 0 ? 'معطّل' : '$m دقيقة';
           return ListTile(
             title: Text(label,
                 style: const TextStyle(color: AppColors.text)),
@@ -276,6 +397,7 @@ class _SettingsPageState extends State<SettingsPage> {
 
     if (choice != null) {
       await NotificationService.setReminderMinutes(choice);
+      await _reschedule();
       if (mounted) setState(() => _reminderMinutes = choice);
     }
   }

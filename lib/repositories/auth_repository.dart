@@ -11,7 +11,11 @@ class AuthRepository {
 
   Stream<AuthState> get authStateChanges => _client.auth.onAuthStateChange;
 
-  /// Sign up with email + password. The DB trigger creates the profile row.
+  /// Sign up with email + password.
+  ///
+  /// The DB trigger `handle_new_user` creates the profile row.
+  /// If email confirmation is enabled, `response.session` will be null
+  /// and the user must confirm before logging in.
   Future<AuthResponse> signUp({
     required String email,
     required String password,
@@ -23,9 +27,9 @@ class AuthRepository {
       data: {'name': name.trim()},
     );
 
-    // The trigger `handle_new_user` inserts the profile.
-    // If it didn't run yet (rare), we upsert manually.
-    if (response.user != null) {
+    // If session exists (confirmation disabled), ensure profile exists.
+    // Trigger normally handles this, but upsert is a safe fallback.
+    if (response.user != null && response.session != null) {
       try {
         await _client.from('profiles').upsert({
           'id': response.user!.id,
@@ -54,6 +58,14 @@ class AuthRepository {
     return _client.auth.resetPasswordForEmail(email.trim());
   }
 
+  /// Resend signup confirmation email.
+  Future<void> resendConfirmationEmail(String email) {
+    return _client.auth.resend(
+      type: OtpType.signup,
+      email: email.trim(),
+    );
+  }
+
   Future<Map<String, dynamic>?> getProfile(String userId) async {
     final res = await _client
         .from('profiles')
@@ -68,7 +80,9 @@ class AuthRepository {
     String? name,
     String? avatarUrl,
   }) async {
-    final updates = <String, dynamic>{'updated_at': DateTime.now().toIso8601String()};
+    final updates = <String, dynamic>{
+      'updated_at': DateTime.now().toIso8601String(),
+    };
     if (name != null) updates['name'] = name;
     if (avatarUrl != null) updates['avatar_url'] = avatarUrl;
 

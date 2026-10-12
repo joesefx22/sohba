@@ -38,7 +38,7 @@ class PrayerCompleteAnimation extends StatefulWidget {
       barrierDismissible: false,
       barrierColor: Colors.transparent,
       transitionDuration: Duration.zero,
-      pageBuilder: (context, _, __) => PrayerCompleteAnimation(
+      pageBuilder: (context, _, _) => PrayerCompleteAnimation(
         prayer: prayer,
         status: status,
         hasanat: hasanat,

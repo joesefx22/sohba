@@ -30,7 +30,7 @@ class BadgeUnlockAnimation extends StatefulWidget {
       barrierDismissible: false,
       barrierColor: Colors.transparent,
       transitionDuration: Duration.zero,
-      pageBuilder: (context, _, __) => BadgeUnlockAnimation(
+      pageBuilder: (context, _, _) => BadgeUnlockAnimation(
         badge: badge,
         onComplete: () => Navigator.of(context).pop(),
       ),

@@ -9,6 +9,7 @@ import '../../widgets/glass_scaffold.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/error_state.dart';
 import 'signup_page.dart';
+import 'forgot_password_page.dart';                       // ← جديد
 
 class LoginPage extends StatefulWidget {
   const LoginPage({super.key});
@@ -47,10 +48,26 @@ class _LoginPageState extends State<LoginPage> {
       final err = context.read<AuthProvider>().error;
       AppSnackbar.error(context, err ?? 'فشل تسجيل الدخول');
     }
+    // Auto-navigation on success is handled by the `auth.isLoggedIn`
+    // watcher below (see build method).
   }
+
+  // ✅ _sendReset اتشالت — دلوقتي الـ navigation لصفحة مستقلة.
 
   @override
   Widget build(BuildContext context) {
+    // Auto-navigate when auth succeeds (e.g. after signup with session).
+    final auth = context.watch<AuthProvider>();
+    if (auth.isLoggedIn) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted) return;
+        Navigator.of(context).pushNamedAndRemoveUntil(
+          '/splash',
+          (_) => false,
+        );
+      });
+    }
+
     return GlassScaffold(
       body: SafeArea(
         child: Center(
@@ -86,6 +103,8 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           controller: _emailCtrl,
                           keyboardType: TextInputType.emailAddress,
+                          textInputAction: TextInputAction.next,
+                          autofillHints: const [AutofillHints.email],
                           decoration: const InputDecoration(
                             labelText: 'البريد الإلكتروني',
                             prefixIcon: Icon(Icons.email_outlined),
@@ -99,6 +118,8 @@ class _LoginPageState extends State<LoginPage> {
                         TextFormField(
                           controller: _passCtrl,
                           obscureText: _obscure,
+                          textInputAction: TextInputAction.done,
+                          onFieldSubmitted: (_) => _loading ? null : _submit(),
                           decoration: InputDecoration(
                             labelText: 'كلمة المرور',
                             prefixIcon: const Icon(Icons.lock_outline),
@@ -115,11 +136,38 @@ class _LoginPageState extends State<LoginPage> {
                               ? 'أدخل كلمة المرور'
                               : null,
                         ),
-                        const SizedBox(height: 24),
+                        const SizedBox(height: 8),
+
+                        // ✅ زر "نسيت كلمة المرور؟" → ينقل لصفحة مستقلة
+                        Align(
+                          alignment: AlignmentDirectional.centerEnd,
+                          child: TextButton(
+                            onPressed: () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute(
+                                  builder: (_) =>
+                                      const ForgotPasswordPage(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'نسيت كلمة المرور؟',
+                              style: TextStyle(
+                                color: AppColors.mint,
+                                fontSize: 13,
+                              ),
+                            ),
+                          ),
+                        ),
+
+                        const SizedBox(height: 8),
                         AppButton.primary(
                           onPressed: _loading ? null : _submit,
-                          label: _loading ? 'جارٍ الدخول...' : 'تسجيل الدخول',
+                          label: _loading
+                              ? 'جارٍ الدخول...'
+                              : 'تسجيل الدخول',
                           expanded: true,
+                          isLoading: _loading,
                         ),
                       ],
                     ),
@@ -128,10 +176,12 @@ class _LoginPageState extends State<LoginPage> {
                   TextButton(
                     onPressed: () {
                       Navigator.of(context).push(
-                        MaterialPageRoute(builder: (_) => const SignupPage()),
+                        MaterialPageRoute(
+                            builder: (_) => const SignupPage()),
                       );
                     },
-                    child: const Text('ليس لديك حساب؟ أنشئ حسابًا جديدًا'),
+                    child: const Text(
+                        'ليس لديك حساب؟ أنشئ حسابًا جديدًا'),
                   ),
                 ],
               ),

@@ -5,7 +5,7 @@ plugins {
 }
 
 android {
-    namespace "com.example.sohba"
+    namespace "com.sohba.app"
     compileSdk 36
 
     ndkVersion = "28.2.13676358"
@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "com.example.sohba"
+        applicationId "com.sohba.app"
         minSdkVersion flutter.minSdkVersion
         targetSdk 34
         versionCode 1

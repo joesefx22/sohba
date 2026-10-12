@@ -1,22 +1,23 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
+import '../config/app_config.dart';
+import '../providers/athkar_provider.dart';
 import '../providers/auth_provider.dart';
+import '../providers/badge_provider.dart';
+import '../providers/challenge_provider.dart';
+import '../providers/daily_lesson_provider.dart';
 import '../providers/group_provider.dart';
+import '../providers/lock_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/prayer_provider.dart';
-import '../providers/badge_provider.dart';
 import '../providers/streak_provider.dart';
-import '../providers/athkar_provider.dart';
-import '../providers/lock_provider.dart';
-import '../providers/daily_lesson_provider.dart';
-import '../providers/challenge_provider.dart';
 import '../services/adhan_service.dart';
 import '../services/location_service.dart';
+import '../services/notification_scheduler.dart';
 import '../services/scheduler_service.dart';
-import '../config/app_config.dart';
 import '../theme/app_colors.dart';
-import '../theme/app_theme.dart';
+import '../theme/app_text.dart';
 import 'auth/login_page.dart';
 import 'group/join_group_page.dart';
 import 'home/home_page.dart';
@@ -36,6 +37,7 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _route() async {
+    // ── Capture providers BEFORE any await ──────────────────────
     final auth = context.read<AuthProvider>();
     final streakProvider = context.read<StreakProvider>();
     final groupProvider = context.read<GroupProvider>();
@@ -47,15 +49,18 @@ class _SplashPageState extends State<SplashPage> {
     final lockProvider = context.read<LockProvider>();
     final challengeProvider = context.read<ChallengeProvider>();
 
+    // ── Location (must be first — adhan times depend on it) ─────
     final loc = await LocationService.current();
     AdhanService.setLocation(loc.lat, loc.lng);
 
+    // ── Wait for AuthProvider to resolve its status ─────────────
     for (int i = 0; i < 20 && auth.status == AuthStatus.unknown; i++) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
     if (!mounted) return;
 
+    // ── Not logged in → login ───────────────────────────────────
     if (!auth.isLoggedIn) {
       _go(const LoginPage());
       return;
@@ -63,6 +68,7 @@ class _SplashPageState extends State<SplashPage> {
 
     final userId = auth.user!.id;
 
+    // ── Daily maintenance (sweep missed prayers, streak loss) ──
     try {
       await SchedulerService.runDailyMaintenance(
         userId: userId,
@@ -74,6 +80,7 @@ class _SplashPageState extends State<SplashPage> {
 
     if (!mounted) return;
 
+    // ── Parallel data load ──────────────────────────────────────
     await Future.wait([
       groupProvider.loadForUser(userId),
       prayerProvider.loadToday(userId),
@@ -96,6 +103,12 @@ class _SplashPageState extends State<SplashPage> {
 
     if (!mounted) return;
 
+    // ── Schedule notifications in background (fire & forget) ────
+    NotificationScheduler.rescheduleAll().catchError((e) {
+      debugPrint('NotificationScheduler error: $e');
+    });
+
+    // ── Navigate ────────────────────────────────────────────────
     _go(groupProvider.hasGroup ? const HomePage() : const JoinGroupPage());
   }
 

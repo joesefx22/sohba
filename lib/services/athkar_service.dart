@@ -1,6 +1,6 @@
 import 'dart:convert';
-import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../models/athkar.dart';
 
@@ -14,9 +14,6 @@ class AthkarService {
   static List<AthkarCategory>? _cached;
 
   /// Category → list of Hisnul Muslim IDs.
-  ///
-  /// Source: standard Hisnul Muslim chapter structure.
-  /// NOTE: You can customize these ranges after inspecting your JSON file.
   static const Map<String, CategoryMeta> categoryMeta = {
     'morning': CategoryMeta(
       nameAr: 'أذكار الصباح',
@@ -67,32 +64,48 @@ class AthkarService {
   };
 
   /// Load and cache all categories with their items.
+  ///
+  /// Returns an empty list on failure (missing asset / malformed JSON)
+  /// so the app never crashes on startup.
   static Future<List<AthkarCategory>> loadAll() async {
     if (_cached != null) return _cached!;
 
-    final raw = await rootBundle.loadString('assets/athkar/hisnul_muslim.json');
-    final decoded = json.decode(raw);
-
-    // Handle both flat array and {items: [...]} wrapper
     final List<dynamic> rawItems;
-    if (decoded is List) {
-      rawItems = decoded;
-    } else if (decoded is Map && decoded['items'] is List) {
-      rawItems = decoded['items'] as List;
-    } else {
-      debugPrint('AthkarService: unexpected JSON shape');
-      return [];
+    try {
+      final raw =
+          await rootBundle.loadString('assets/athkar/hisnul_muslim.json');
+      final decoded = json.decode(raw);
+
+      if (decoded is List) {
+        rawItems = decoded;
+      } else if (decoded is Map && decoded['items'] is List) {
+        rawItems = decoded['items'] as List;
+      } else {
+        debugPrint('AthkarService: unexpected JSON shape');
+        _cached = const [];
+        return _cached!;
+      }
+    } catch (e, st) {
+      debugPrint('AthkarService.loadAll failed: $e\n$st');
+      _cached = const [];
+      return _cached!;
     }
 
-    // Index by ID
+    // Index by ID (tolerate String or int IDs from JSON).
     final byId = <int, Map<String, dynamic>>{};
     for (final item in rawItems) {
-      if (item is Map<String, dynamic> && item['ID'] != null) {
-        byId[item['ID'] as int] = item;
+      if (item is! Map) continue;
+      final rawId = item['ID'];
+      int? id;
+      if (rawId is int) {
+        id = rawId;
+      } else if (rawId is String) {
+        id = int.tryParse(rawId);
       }
+      if (id == null) continue;
+      byId[id] = Map<String, dynamic>.from(item);
     }
 
-    // Build categories
     final categories = <AthkarCategory>[];
     for (final entry in categoryMeta.entries) {
       final meta = entry.value;
@@ -107,15 +120,13 @@ class AthkarService {
           id: 'athkar_$id',
           categoryId: entry.key,
           displayOrder: order++,
-          arabic: (raw['ARABIC_TEXT'] ?? '').toString(),
+          arabic: _str(raw['ARABIC_TEXT']),
           transliteration:
-              (raw['LANGUAGE_ARABIC_TRANSLATED_TEXT'] ?? '').toString(),
-          translation: (raw['TRANSLATED_TEXT'] ?? '').toString(),
-          repeatCount: (raw['REPEAT'] ?? 1) is int
-              ? raw['REPEAT'] as int
-              : int.tryParse(raw['REPEAT'].toString()) ?? 1,
-          reference: raw['REFERENCE']?.toString(),
-          virtue: raw['VIRTUE']?.toString(),
+              _nullableStr(raw['LANGUAGE_ARABIC_TRANSLATED_TEXT']),
+          translation: _nullableStr(raw['TRANSLATED_TEXT']),
+          repeatCount: _intOr(raw['REPEAT'], 1),
+          reference: _nullableStr(raw['REFERENCE']),
+          virtue: _nullableStr(raw['VIRTUE']),
         ));
       }
 
@@ -139,11 +150,30 @@ class AthkarService {
 
   static Future<AthkarCategory?> loadCategory(String id) async {
     final all = await loadAll();
-    try {
-      return all.firstWhere((c) => c.id == id);
-    } catch (_) {
-      return null;
+    for (final c in all) {
+      if (c.id == id) return c;
     }
+    return null;
+  }
+
+  /// Clear cache (useful for tests).
+  @visibleForTesting
+  static void clearCache() => _cached = null;
+
+  // ----- helpers -----
+
+  static String _str(Object? v) => v?.toString() ?? '';
+
+  static String? _nullableStr(Object? v) {
+    final s = v?.toString();
+    if (s == null || s.isEmpty) return null;
+    return s;
+  }
+
+  static int _intOr(Object? v, int fallback) {
+    if (v is int) return v;
+    if (v is num) return v.toInt();
+    return int.tryParse(v?.toString() ?? '') ?? fallback;
   }
 }
 

@@ -25,3 +25,10 @@ Thumbs.db
 *.keystore
 *.jks
 key.properties
+
+# Secrets
+env.json
+.env
+.env.local
+*.env
+!.env.example

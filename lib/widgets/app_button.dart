@@ -2,7 +2,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 import '../theme/app_colors.dart';
-import '../theme/app_motion.dart';
 import '../theme/app_text.dart';
 import 'press_scale.dart';
 

@@ -14,27 +14,41 @@ import 'providers/streak_provider.dart';
 import 'providers/lock_provider.dart';
 import 'providers/daily_lesson_provider.dart';
 import 'providers/challenge_provider.dart';
+import 'providers/himmah_provider.dart';                   // ← جديد
 import 'pages/splash_page.dart';
 import 'services/push_notification_service.dart';
 import 'theme/app_colors.dart';
+import 'theme/app_text.dart';
 import 'theme/app_theme.dart';
 import 'widgets/error_boundary.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
+  // ← 1. Global error handling (must be FIRST)
+  ErrorBoundary.install();
+
+  // ← 2. Load env
   await EnvConfig.load();
   if (!EnvConfig.isConfigured) {
     runApp(const _ConfigErrorApp());
     return;
   }
 
+  // ← 3. Supabase
   await Supabase.initialize(
     url: EnvConfig.supabaseUrl,
+    // ignore: deprecated_member_use
     anonKey: EnvConfig.supabaseAnonKey,
   );
 
-  await PushNotificationService.init();
+  // ← 4. Notifications (needs Supabase already up for logging)
+  await PushNotificationService.init(
+    onTap: (payload) {
+      debugPrint('Notification tapped: $payload');
+      // TODO: navigate to relevant screen based on payload
+    },
+  );
 
   runApp(const SohbaApp());
 }
@@ -57,6 +71,7 @@ class SohbaApp extends StatelessWidget {
           ChangeNotifierProvider(create: (_) => LockProvider()),
           ChangeNotifierProvider(create: (_) => DailyLessonProvider()),
           ChangeNotifierProvider(create: (_) => ChallengeProvider()),
+          ChangeNotifierProvider(create: (_) => HimmahProvider()), // ← جديد
         ],
         child: MaterialApp(
           title: 'صحبة',
@@ -92,9 +107,11 @@ class _ConfigErrorApp extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline, size: 64, color: AppColors.error),
+                  const Icon(Icons.error_outline,
+                      size: 64, color: AppColors.error),
                   const SizedBox(height: 16),
-                  Text('إعدادات ناقصة', style: AppText.heading.copyWith(fontSize: 22)),
+                  Text('إعدادات ناقصة',
+                      style: AppText.heading.copyWith(fontSize: 22)),
                   const SizedBox(height: 12),
                   Text(
                     'تأكد من وجود .env فيه SUPABASE_URL و SUPABASE_ANON_KEY',
