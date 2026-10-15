@@ -34,7 +34,7 @@ class HimmahProvider extends ChangeNotifier {
     notifyListeners();
 
     try {
-      final results = await Future.wait([
+      final results = await Future.wait<dynamic>([
         HimmahService.currentBalance(userId),
         Supabase.instance.client
             .from('himmah_transactions')

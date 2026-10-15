@@ -1,5 +1,6 @@
 import 'package:flutter/foundation.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
 import '../config/app_config.dart';
 import '../models/prayer_log.dart';
@@ -21,7 +22,7 @@ class NotificationScheduler {
   // Deterministic IDs (avoid collisions).
   static const int _idAdhanBase   = 1000;  // 1000..1004 (5 prayers)
   static const int _idReminderBase = 2000; // 2000..2004 (reminders before adhan)
-  static const int _idStreak      = 3000;
+  static const int _idStreak       = 3000;
   static const int _idDailyLesson = 4000;
 
   /// Full reschedule — call this on app start and after any preference change.
