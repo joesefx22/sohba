@@ -18,6 +18,7 @@ class GroupProvider extends ChangeNotifier {
   Map<String, dynamic>? get group => _group;
   List<Map<String, dynamic>> get members => List.unmodifiable(_members);
   bool get loading => _loading;
+  bool get isLoading => _loading;
   String? get error => _error;
   bool get hasGroup => _group != null;
 
@@ -64,16 +65,42 @@ class GroupProvider extends ChangeNotifier {
     }
   }
 
+  /// Admin creates a group without joining it.
+  Future<bool> adminCreateGroup({
+    required String name,
+    required String userId,
+    String? description,
+  }) async {
+    _loading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      await _repo.adminCreateGroup(
+        name: name,
+        userId: userId,
+        description: description,
+      );
+      _loading = false;
+      notifyListeners();
+      return true;
+    } catch (e) {
+      _error = _friendlyError(e);
+      _loading = false;
+      notifyListeners();
+      return false;
+    }
+  }
+
+  /// Join by name only — no invite code.
   Future<bool> joinGroup({
     required String name,
-    required String inviteCode,
     required String userId,
   }) async {
     _error = null;
     try {
       _group = await _repo.joinGroup(
         name: name,
-        inviteCode: inviteCode,
         userId: userId,
       );
       await _refreshMembers();
@@ -139,17 +166,14 @@ class GroupProvider extends ChangeNotifier {
     final raw = e.toString();
     final lower = raw.toLowerCase();
 
-    // Repository throws `Exception('message')` — extract the message
     if (raw.startsWith('Exception: ')) {
       return raw.substring('Exception: '.length);
     }
 
     if (e is PostgrestException) {
-      // Duplicate name (unique index on lower(name))
       if (e.code == '23505') {
         return 'اسم المجموعة مستخدم بالفعل';
       }
-      // Foreign key / permission
       if (e.code == '23503' || e.code == '42501') {
         return 'تعذّر إتمام العملية — تحقق من صلاحياتك';
       }

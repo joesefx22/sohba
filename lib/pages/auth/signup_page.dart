@@ -48,16 +48,10 @@ class _SignupPageState extends State<SignupPage> {
 
     switch (result) {
       case SignUpResult.success:
-        // Logged in immediately — jump to splash which routes to
-        // JoinGroupPage or HomePage.
         Navigator.of(context).pushAndRemoveUntil(
           MaterialPageRoute(builder: (_) => const SplashPage()),
           (_) => false,
         );
-        break;
-
-      case SignUpResult.needsEmailConfirmation:
-        _showConfirmationDialog();
         break;
 
       case SignUpResult.error:
@@ -65,94 +59,6 @@ class _SignupPageState extends State<SignupPage> {
         AppSnackbar.error(context, err ?? 'فشل التسجيل');
         break;
     }
-  }
-
-  void _showConfirmationDialog() {
-    final email = context.read<AuthProvider>().pendingEmail ?? _emailCtrl.text;
-
-    showDialog<void>(
-      context: context,
-      barrierDismissible: false,
-      builder: (dialogCtx) => AlertDialog(
-        backgroundColor: AppColors.surfaceElevated,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-        ),
-        title: const Row(
-          children: [
-            Icon(Icons.mark_email_unread_outlined,
-                color: AppColors.gold, size: 24),
-            SizedBox(width: 10),
-            Text(
-              'راجع بريدك',
-              style: TextStyle(color: AppColors.text),
-            ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              'أرسلنا رابط تأكيد إلى:',
-              style: AppText.body,
-            ),
-            const SizedBox(height: 8),
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.black.withAlpha(50),
-                borderRadius: BorderRadius.circular(10),
-                border: Border.all(color: AppColors.gold.withAlpha(80)),
-              ),
-              child: SelectableText(
-                email,
-                textAlign: TextAlign.center,
-                style: AppText.body.copyWith(
-                  color: AppColors.goldBright,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'افتح الرابط لتفعيل حسابك، ثم ارجع وسجّل الدخول.',
-              style: AppText.caption,
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () async {
-              final ok =
-                  await context.read<AuthProvider>().resendConfirmationEmail();
-              if (!dialogCtx.mounted) return;
-              if (ok) {
-                AppSnackbar.success(dialogCtx, 'تم إرسال الرابط مرة أخرى');
-              } else {
-                AppSnackbar.error(dialogCtx, 'تعذّر الإرسال — حاول لاحقًا');
-              }
-            },
-            child: const Text(
-              'أعد الإرسال',
-              style: TextStyle(color: AppColors.mint),
-            ),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: AppColors.emerald,
-              foregroundColor: Colors.white,
-            ),
-            onPressed: () {
-              Navigator.of(dialogCtx).pop();
-              Navigator.of(context).pop(); // back to login
-            },
-            child: const Text('حسنًا'),
-          ),
-        ],
-      ),
-    );
   }
 
   @override

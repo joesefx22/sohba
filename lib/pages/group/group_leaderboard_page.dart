@@ -56,7 +56,6 @@ class GroupLeaderboardPage extends StatelessWidget {
                       ],
                     ),
                   ),
-                  _inviteChip(context, group.group!['invite_code'] ?? ''),
                 ],
               ),
               const SizedBox(height: 20),
@@ -84,42 +83,6 @@ class GroupLeaderboardPage extends StatelessWidget {
                 ),
             ],
           ),
-        ),
-      ),
-    );
-  }
-
-  Widget _inviteChip(BuildContext context, String code) {
-    return GestureDetector(
-      onTap: () {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('كود الدعوة: $code'),
-            backgroundColor: AppColors.surface,
-          ),
-        );
-      },
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-        decoration: BoxDecoration(
-          color: AppColors.gold.withAlpha(40),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(color: AppColors.gold.withAlpha(120)),
-        ),
-        child: Row(
-          children: [
-            const Icon(Icons.vpn_key, color: AppColors.gold, size: 18),
-            const SizedBox(width: 8),
-            Text(
-              code,
-              style: const TextStyle(
-                fontSize: 15,
-                fontWeight: FontWeight.bold,
-                color: AppColors.gold,
-                letterSpacing: 2,
-              ),
-            ),
-          ],
         ),
       ),
     );

@@ -23,10 +23,9 @@ class _JoinGroupPageState extends State<JoinGroupPage>
   late final TabController _tabs;
   bool _loading = false;
 
-  // Join fields
+  // Join fields (name only)
   final _joinFormKey = GlobalKey<FormState>();
   final _joinNameCtrl = TextEditingController();
-  final _joinCodeCtrl = TextEditingController();
 
   // Create fields
   final _createFormKey = GlobalKey<FormState>();
@@ -43,7 +42,6 @@ class _JoinGroupPageState extends State<JoinGroupPage>
   void dispose() {
     _tabs.dispose();
     _joinNameCtrl.dispose();
-    _joinCodeCtrl.dispose();
     _createNameCtrl.dispose();
     _createDescCtrl.dispose();
     super.dispose();
@@ -56,7 +54,6 @@ class _JoinGroupPageState extends State<JoinGroupPage>
     final userId = context.read<AuthProvider>().user!.id;
     final ok = await context.read<GroupProvider>().joinGroup(
           name: _joinNameCtrl.text,
-          inviteCode: _joinCodeCtrl.text,
           userId: userId,
         );
 
@@ -140,8 +137,7 @@ class _JoinGroupPageState extends State<JoinGroupPage>
           child: Column(
             mainAxisSize: MainAxisSize.min,
             children: [
-              const Icon(Icons.group_add,
-                  size: 56, color: AppColors.gold),
+              const Icon(Icons.group_add, size: 56, color: AppColors.gold),
               const SizedBox(height: 16),
               Text('انضم إلى مجموعة',
                   style: AppText.section.copyWith(fontSize: 22)),
@@ -156,20 +152,6 @@ class _JoinGroupPageState extends State<JoinGroupPage>
                 validator: (v) => (v == null || v.trim().isEmpty)
                     ? 'أدخل اسم المجموعة'
                     : null,
-              ),
-              const SizedBox(height: 16),
-              TextFormField(
-                controller: _joinCodeCtrl,
-                textCapitalization: TextCapitalization.characters,
-                maxLength: 6,
-                decoration: const InputDecoration(
-                  labelText: 'كود الدعوة (6 أحرف)',
-                  prefixIcon: Icon(Icons.vpn_key),
-                  border: OutlineInputBorder(),
-                  counterText: '',
-                ),
-                validator: (v) =>
-                    (v == null || v.length != 6) ? 'الكود 6 أحرف' : null,
               ),
               const SizedBox(height: 24),
               AppButton.primary(
@@ -225,12 +207,6 @@ class _JoinGroupPageState extends State<JoinGroupPage>
                 onPressed: _loading ? null : _doCreate,
                 label: _loading ? 'جارٍ الإنشاء...' : 'أنشئ',
                 expanded: true,
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'سيتم إنشاء كود دعوة تلقائيًا لمشاركته مع إخوانك',
-                style: TextStyle(fontSize: 12, color: Colors.white60),
-                textAlign: TextAlign.center,
               ),
             ],
           ),

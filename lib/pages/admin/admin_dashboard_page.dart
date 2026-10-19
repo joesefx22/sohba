@@ -53,9 +53,9 @@ class AdminDashboardPage extends StatelessWidget {
           children: [
             _overviewCard(group),
             const SizedBox(height: 16),
-            _statsCard(group),
+            _createGroupButton(context),
             const SizedBox(height: 16),
-            _inviteCard(context, group.group?['invite_code'] ?? ''),
+            _statsCard(group),
             const SizedBox(height: 16),
             _membersList(group),
           ],
@@ -64,6 +64,9 @@ class AdminDashboardPage extends StatelessWidget {
     );
   }
 
+  // ============================================
+  // OVERVIEW
+  // ============================================
   Widget _overviewCard(GroupProvider group) {
     return GlassContainer(
       padding: const EdgeInsets.all(18),
@@ -93,6 +96,111 @@ class AdminDashboardPage extends StatelessWidget {
     );
   }
 
+  // ============================================
+  // ADMIN CREATE GROUP BUTTON
+  // ============================================
+  Widget _createGroupButton(BuildContext context) {
+    return GlassContainer(
+      padding: EdgeInsets.zero,
+      child: ListTile(
+        leading: const Icon(Icons.add_circle_outline,
+            color: AppColors.mint, size: 26),
+        title: Text(
+          'إضافة مجموعة جديدة (أدمن)',
+          style: AppText.body.copyWith(
+            fontWeight: FontWeight.w600,
+            color: AppColors.text,
+          ),
+        ),
+        subtitle: Text(
+          'إنشاء مجموعة مباشرة في قاعدة البيانات',
+          style: AppText.caption,
+        ),
+        trailing: const Icon(Icons.chevron_left, color: AppColors.textSecondary),
+        onTap: () => _showCreateGroupDialog(context),
+      ),
+    );
+  }
+
+  // ============================================
+  // CREATE GROUP DIALOG
+  // ============================================
+  void _showCreateGroupDialog(BuildContext context) {
+    final nameController = TextEditingController();
+    final descController = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    showDialog<void>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        title: const Text('إضافة مجموعة جديدة (أدمن)'),
+        content: Form(
+          key: formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              TextFormField(
+                controller: nameController,
+                decoration:
+                    const InputDecoration(labelText: 'اسم المجموعة'),
+                validator: (v) => (v == null || v.trim().isEmpty)
+                    ? 'أدخل اسم المجموعة'
+                    : null,
+              ),
+              const SizedBox(height: 12),
+              TextFormField(
+                controller: descController,
+                decoration:
+                    const InputDecoration(labelText: 'الوصف (اختياري)'),
+              ),
+            ],
+          ),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dialogCtx),
+            child: const Text('إلغاء'),
+          ),
+          ElevatedButton(
+            onPressed: () async {
+              if (!formKey.currentState!.validate()) return;
+
+              final userId =
+                  dialogCtx.read<AuthProvider>().user!.id;
+
+              final success =
+                  await dialogCtx.read<GroupProvider>().adminCreateGroup(
+                        name: nameController.text,
+                        description: descController.text.isEmpty
+                            ? null
+                            : descController.text,
+                        userId: userId,
+                      );
+
+              if (!dialogCtx.mounted) return;
+              Navigator.pop(dialogCtx);
+
+              if (success) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('تم إنشاء المجموعة بنجاح')),
+                );
+              } else {
+                final err = context.read<GroupProvider>().error;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text(err ?? 'فشل الإنشاء')),
+                );
+              }
+            },
+            child: const Text('إنشاء'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ============================================
+  // STATS
+  // ============================================
   Widget _statsCard(GroupProvider group) {
     final totalIman = group.members.fold<double>(
       0,
@@ -109,10 +217,7 @@ class AdminDashboardPage extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text(
-            'إحصائيات المجموعة',
-            style: AppText.subtitle,
-          ),
+          Text('إحصائيات المجموعة', style: AppText.subtitle),
           const SizedBox(height: 14),
           Row(
             children: [
@@ -145,11 +250,7 @@ class AdminDashboardPage extends StatelessWidget {
               ),
               const SizedBox(width: 10),
               Expanded(
-                child: _stat(
-                  'الحالة',
-                  'نشطة',
-                  AppColors.emerald,
-                ),
+                child: _stat('الحالة', 'نشطة', AppColors.emerald),
               ),
             ],
           ),
@@ -183,51 +284,9 @@ class AdminDashboardPage extends StatelessWidget {
     );
   }
 
-  Widget _inviteCard(BuildContext context, String code) {
-    return GlassContainer(
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(Icons.vpn_key, color: AppColors.gold, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                'كود الدعوة',
-                style: AppText.body.copyWith(
-                  fontWeight: FontWeight.w600,
-                  color: AppColors.text,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 16),
-            decoration: BoxDecoration(
-              color: Colors.black.withAlpha(50),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(color: AppColors.gold.withAlpha(120)),
-            ),
-            child: Center(
-              child: SelectableText(
-                code,
-                style: AppText.code,
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'شارك هذا الكود مع إخوانك للانضمام إلى المجموعة',
-            style: AppText.caption,
-          ),
-        ],
-      ),
-    );
-  }
-
+  // ============================================
+  // MEMBERS LIST
+  // ============================================
   Widget _membersList(GroupProvider group) {
     return GlassContainer(
       padding: const EdgeInsets.all(18),

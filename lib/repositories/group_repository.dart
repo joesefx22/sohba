@@ -10,7 +10,8 @@ class GroupRepository {
 
   String _generateInviteCode() {
     final rng = Random.secure();
-    return List.generate(6, (_) => _alphabet[rng.nextInt(_alphabet.length)]).join();
+    return List.generate(6, (_) => _alphabet[rng.nextInt(_alphabet.length)])
+        .join();
   }
 
   /// Create a new group. Creator becomes admin automatically.
@@ -68,24 +69,68 @@ class GroupRepository {
     return group;
   }
 
-  /// Join a group by name + invite code.
+  /// Admin: create a group only (no auto-join, no member row).
+  ///
+  /// ملاحظة: جدول `groups` يشترط `invite_code NOT NULL UNIQUE`، وسياسة RLS
+  /// تفرض `auth.uid() = created_by`. لذلك نولّد الكود تلقائيًا ونمرر userId.
+  Future<Map<String, dynamic>> adminCreateGroup({
+    required String name,
+    required String userId,
+    String? description,
+  }) async {
+    // Check duplicate name
+    final existing = await _client
+        .from('groups')
+        .select('id')
+        .ilike('name', name.trim())
+        .maybeSingle();
+
+    if (existing != null) {
+      throw Exception('المجموعة موجودة مسبقاً');
+    }
+
+    // Generate a unique invite code (still needed by schema)
+    String code = _generateInviteCode();
+    for (int i = 0; i < 5; i++) {
+      final clash = await _client
+          .from('groups')
+          .select('id')
+          .eq('invite_code', code)
+          .maybeSingle();
+      if (clash == null) break;
+      code = _generateInviteCode();
+    }
+
+    final response = await _client
+        .from('groups')
+        .insert({
+          'name': name.trim(),
+          'description': description,
+          'invite_code': code,
+          'created_by': userId,
+        })
+        .select()
+        .single();
+
+    return response;
+  }
+
+  /// Join a group by name only (no invite code required).
   Future<Map<String, dynamic>> joinGroup({
     required String name,
-    required String inviteCode,
     required String userId,
   }) async {
     final group = await _client
         .from('groups')
         .select()
         .ilike('name', name.trim())
-        .eq('invite_code', inviteCode.trim().toUpperCase())
         .maybeSingle();
 
     if (group == null) {
-      throw Exception('اسم المجموعة أو الكود غير صحيح');
+      throw Exception('المجموعة غير موجودة');
     }
 
-    // Check if already a member
+    // التحقق مما إذا كان عضواً مسبقاً
     final existing = await _client
         .from('group_members')
         .select()
