@@ -10,17 +10,16 @@ class HimmahService {
     required String reason,
     String? referenceId,
   }) async {
-    final row = await Supabase.instance.client
-        .from('himmah_transactions')
-        .insert({
-          'user_id': userId,
-          'amount': amount,
-          'reason': reason,
-          'reference_id': referenceId,
-        })
-        .select('balance_after')
-        .single();
-    return (row['balance_after'] as int?) ?? 0;
+    final res = await Supabase.instance.client.rpc(
+      'award_himmah',
+      params: {
+        'p_user_id': userId,
+        'p_amount': amount,
+        'p_reason': reason,
+        'p_reference_id': referenceId,
+      },
+    );
+    return (res as num).toInt();
   }
 
   static Future<void> spend({
@@ -29,12 +28,15 @@ class HimmahService {
     required String reason,
     String? referenceId,
   }) async {
-    await Supabase.instance.client.from('himmah_transactions').insert({
-      'user_id': userId,
-      'amount': -amount.abs(),
-      'reason': reason,
-      'reference_id': referenceId,
-    });
+    await Supabase.instance.client.rpc(
+      'spend_himmah',
+      params: {
+        'p_user_id': userId,
+        'p_amount': amount,
+        'p_reason': reason,
+        'p_reference_id': referenceId,
+      },
+    );
   }
 
   static Future<int> currentBalance(String userId) async {
@@ -46,7 +48,6 @@ class HimmahService {
     return (row?['himmah'] as int?) ?? 0;
   }
 
-  /// Streak day bonus: 1 himmah per day of consecutive streak (capped).
   static int dailyStreakHimmah(int streak) {
     if (streak >= 30) return 3;
     if (streak >= 14) return 2;

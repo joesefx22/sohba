@@ -5,17 +5,44 @@ import '../models/athkar.dart';
 import '../repositories/athkar_repository.dart';
 import '../services/athkar_service.dart';
 
+/// UI state of the athkar loading lifecycle.
+enum AthkarState { loading, ready, error, empty }
+
 class AthkarProvider extends ChangeNotifier {
   late final AthkarRepository _repo;
 
   List<AthkarCategory> _categories = [];
   final Map<String, UserAthkarProgress> _progress = {};
+  Map<String, int> _unlockLevels = {};
   bool _loading = false;
+  String? _error;
   DateTime _todayDate = DateTime.now();
 
   AthkarProvider() {
     _repo = AthkarRepository(Supabase.instance.client);
   }
+
+  // ============================================
+  // STATE (for UI switch)
+  // ============================================
+
+  AthkarState get state {
+    if (_loading) return AthkarState.loading;
+    if (_error != null) return AthkarState.error;
+    if (_categories.isEmpty) return AthkarState.empty;
+    return AthkarState.ready;
+  }
+
+  String? get errorMessage => _error;
+
+  Future<void> retry(String userId) async {
+    _error = null;
+    await loadAll(userId);
+  }
+
+  // ============================================
+  // GETTERS
+  // ============================================
 
   List<AthkarCategory> get categories => List.unmodifiable(_categories);
   bool get loading => _loading;
@@ -24,11 +51,9 @@ class AthkarProvider extends ChangeNotifier {
   List<AthkarCategory> get mandatoryCategories =>
       _categories.where((c) => c.isMandatory).toList();
 
-  /// All items across mandatory categories (used by BadgeEngine).
   List<AthkarItem> get allMandatoryItems =>
       mandatoryCategories.expand((c) => c.items).toList();
 
-  /// Map itemId → completed for the given list.
   Map<String, bool> progressMapFor(List<AthkarItem> items) {
     final m = <String, bool>{};
     for (final item in items) {
@@ -37,8 +62,29 @@ class AthkarProvider extends ChangeNotifier {
     return m;
   }
 
+  // ============================================
+  // PROGRESSIVE UNLOCK
+  // ============================================
+
+  int levelFor(String categoryId) => _unlockLevels[categoryId] ?? 5;
+
+  bool isCategoryFullyUnlocked(String categoryId) {
+    return true; // TODO: implement full-unlock logic
+  }
+
+  List<AthkarItem> visibleItemsFor(AthkarCategory cat) {
+    if (!cat.isMandatory) return cat.items;
+    final level = levelFor(cat.id);
+    return cat.items.take(level).toList();
+  }
+
+  // ============================================
+  // LOAD
+  // ============================================
+
   Future<void> loadAll(String userId) async {
     _loading = true;
+    _error = null;
     notifyListeners();
 
     try {
@@ -53,7 +99,24 @@ class AthkarProvider extends ChangeNotifier {
       for (final p in progress) {
         _progress[p.athkarItemId] = p;
       }
+
+      // Load progressive unlock state (non-fatal if RPC missing)
+      try {
+        final unlockState = await Supabase.instance.client.rpc(
+          'get_athkar_unlock_state',
+          params: {'p_user_id': userId},
+        );
+        _unlockLevels = {};
+        for (final row in (unlockState as List)) {
+          final r = row as Map<String, dynamic>;
+          _unlockLevels[r['category_id'] as String] =
+              (r['current_level'] as int?) ?? 5;
+        }
+      } catch (e) {
+        debugPrint('AthkarProvider: unlock state load failed ($e)');
+      }
     } catch (e) {
+      _error = e.toString();
       debugPrint('AthkarProvider.loadAll: $e');
     } finally {
       _loading = false;

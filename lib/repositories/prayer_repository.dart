@@ -15,17 +15,14 @@ class PrayerRepository {
   ///
   /// The server:
   ///   - validates the phase against its own `now()`
-  ///   - computes hasanat from status + phase
+  ///   - computes hasanat from status + phase + streak bonus
   ///   - stamps `recorded_at` with server time
-  ///
-  /// Returns a map with: id, prayer, status, hasanat, recorded_at, phase.
   Future<Map<String, dynamic>> recordPrayerRpc({
     required String userId,
     required PrayerName prayer,
     required PrayerStatus status,
     required DateTime logicalDate,
     required PrayerTimeline timeline,
-    double bonusMultiplier = 1.0,
   }) async {
     final res = await _client.rpc(
       'record_prayer',
@@ -42,7 +39,41 @@ class PrayerRepository {
         'p_individual_close':
             timeline.individualClose.toUtc().toIso8601String(),
         'p_qada_close': timeline.qadaClose.toUtc().toIso8601String(),
-        'p_bonus_multiplier': bonusMultiplier,
+        // p_bonus_multiplier: السيرفر يحسبها
+      },
+    );
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  /// Server-authoritative tawbah.
+  Future<Map<String, dynamic>> markRepentedRpc({
+    required String userId,
+    required PrayerName prayer,
+    required DateTime date,
+  }) async {
+    final res = await _client.rpc(
+      'mark_repented',
+      params: {
+        'p_user_id': userId,
+        'p_prayer': prayer.name,
+        'p_date': _dateOnly(date),
+      },
+    );
+    return Map<String, dynamic>.from(res as Map);
+  }
+
+  /// Server-authoritative historical qada (also unlocks if applicable).
+  Future<Map<String, dynamic>> recordHistoricalQadaRpc({
+    required String userId,
+    required PrayerName prayer,
+    required DateTime date,
+  }) async {
+    final res = await _client.rpc(
+      'record_historical_qada',
+      params: {
+        'p_user_id': userId,
+        'p_prayer': prayer.name,
+        'p_date': _dateOnly(date),
       },
     );
     return Map<String, dynamic>.from(res as Map);
@@ -86,32 +117,33 @@ class PrayerRepository {
         .toList();
   }
 
-  // ============================================
-  // TAWBAH
-  // ============================================
-
-  Future<void> markRepented({
+  /// كل الصلوات اللي محتاجة متابعة (missed غير متوب عنها + qada متوب عنها)
+  /// من تاريخ معين وحتى أمس.
+  Future<List<PrayerLog>> getMissedAndQadaHistory({
     required String userId,
-    required DateTime date,
-    required PrayerName prayer,
+    int daysBack = 90,
   }) async {
-    await _client
+    final today = DateTime.now();
+    final from = today.subtract(Duration(days: daysBack));
+
+    final res = await _client
         .from('prayer_logs')
-        .update({
-          'sayyiat_repented': true,
-          'repented_at': DateTime.now().toIso8601String(),
-        })
+        .select()
         .eq('user_id', userId)
-        .eq('date', _dateOnly(date))
-        .eq('prayer', prayer.name);
+        .inFilter('status', ['missed', 'qada'])
+        .gte('date', _dateOnly(from))
+        .lt('date', _dateOnly(today))
+        .order('date', ascending: false);
+
+    return (res as List)
+        .map((e) => PrayerLog.fromJson(e as Map<String, dynamic>))
+        .toList();
   }
 
   // ============================================
   // SWEEP (server-side, user-scoped)
   // ============================================
 
-  /// Sweeps pending prayers older than 1 day → marks them missed.
-  /// Server enforces that `p_user_id` matches `auth.uid()`.
   Future<int> sweepMissedPrayers({required String userId}) async {
     final res = await _client.rpc(
       'sweep_missed_prayers_for_user',

@@ -22,6 +22,17 @@ class GroupProvider extends ChangeNotifier {
   String? get error => _error;
   bool get hasGroup => _group != null;
 
+  /// True if the currently signed-in user is an admin in the current group.
+  bool get isAdmin {
+    final myId = Supabase.instance.client.auth.currentUser?.id;
+    if (myId == null) return false;
+    final me = _members.firstWhere(
+      (m) => m['user_id'] == myId,
+      orElse: () => {},
+    );
+    return me['role'] == 'admin';
+  }
+
   Future<void> loadForUser(String userId) async {
     _loading = true;
     _error = null;

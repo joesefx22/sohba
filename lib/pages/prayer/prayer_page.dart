@@ -9,8 +9,9 @@ import '../../providers/streak_provider.dart';
 import '../../providers/badge_provider.dart';
 import '../../providers/notification_provider.dart';
 import '../../providers/athkar_provider.dart';
-import '../../providers/lock_provider.dart';
+import '../../providers/title_provider.dart';
 import '../../repositories/prayer_repository.dart';
+import '../../repositories/qiyam_repository.dart';
 import '../../services/prayer_engine.dart';
 import '../../services/adhan_service.dart';
 import '../../services/challenge_service.dart';
@@ -43,6 +44,26 @@ class PrayerPage extends StatelessWidget {
               Text('سجّل صلاتك في الوقت المناسب', style: AppText.caption),
               const SizedBox(height: 20),
               ...PrayerName.values.map((p) => _PrayerRow(prayer: p)),
+
+              if (prayer.missedHistory.isNotEmpty) ...[
+                const SizedBox(height: 24),
+                Row(
+                  children: [
+                    const Icon(Icons.history,
+                        color: AppColors.warning, size: 20),
+                    const SizedBox(width: 8),
+                    Text(
+                      'صلوات تحتاج متابعة',
+                      style:
+                          AppText.section.copyWith(color: AppColors.warning),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ...prayer.missedHistory.map(
+                  (log) => _MissedPrayerCard(log: log),
+                ),
+              ],
             ],
           ),
         ),
@@ -141,16 +162,20 @@ class _PrayerRow extends StatelessWidget {
         text = 'يتبقى ${_fmt(tl.adhan.difference(DateTime.now()))} للأذان';
         break;
       case PrayerPhase.waitingForCongregation:
-        text = 'وقت الجماعة يفتح بعد ${_fmt(tl.congregationOpen.difference(DateTime.now()))}';
+        text =
+            'وقت الجماعة يفتح بعد ${_fmt(tl.congregationOpen.difference(DateTime.now()))}';
         break;
       case PrayerPhase.congregationOpen:
-        text = 'وقت الجماعة — يتبقى ${_fmt(tl.congregationClose.difference(DateTime.now()))}';
+        text =
+            'وقت الجماعة — يتبقى ${_fmt(tl.congregationClose.difference(DateTime.now()))}';
         break;
       case PrayerPhase.individualOpen:
-        text = 'وقت الانفراد — يتبقى ${_fmt(tl.individualClose.difference(DateTime.now()))}';
+        text =
+            'وقت الانفراد — يتبقى ${_fmt(tl.individualClose.difference(DateTime.now()))}';
         break;
       case PrayerPhase.qadaOpen:
-        text = 'وقت القضاء — يتبقى ${_fmt(tl.qadaClose.difference(DateTime.now()))}';
+        text =
+            'وقت القضاء — يتبقى ${_fmt(tl.qadaClose.difference(DateTime.now()))}';
         break;
       case PrayerPhase.missed:
         text = 'فاتت الصلاة — يمكنك التوبة والقضاء';
@@ -225,7 +250,6 @@ class _PrayerRow extends StatelessWidget {
     );
   }
 
-  /// FULL REWRITE: correct order of operations.
   Future<void> _record(BuildContext context, PrayerStatus status) async {
     final auth = context.read<AuthProvider>();
     final prayerProv = context.read<PrayerProvider>();
@@ -235,14 +259,12 @@ class _PrayerRow extends StatelessWidget {
     final athkarProv = context.read<AthkarProvider>();
 
     final userId = auth.user!.id;
-    final bonus = streakProv.bonusMultiplier;
 
-    // ── STEP 1: persist prayer (with streak bonus applied) ─────────
+    // ── STEP 1: persist prayer (server computes bonus) ──────────────
     final result = await prayerProv.recordPrayer(
       userId: userId,
       prayer: prayer,
       status: status,
-      bonusMultiplier: bonus,
     );
 
     if (!context.mounted) return;
@@ -251,15 +273,15 @@ class _PrayerRow extends StatelessWidget {
       return;
     }
 
-    // ── STEP 2: record streak activity FIRST ────────────────────────
+    // ── STEP 2: recompute streak server-side ────────────────────────
     final milestone = await streakProv.recordActivity(userId: userId);
 
-    // ── STEP 3: refresh profile (DB trigger already updated iman) ───
+    // ── STEP 3: refresh profile ─────────────────────────────────────
     await auth.refreshProfile();
 
     if (!context.mounted) return;
 
-    // ── STEP 4: show prayer animation WITH the fresh streak ─────────
+    // ── STEP 4: prayer animation ────────────────────────────────────
     await PrayerCompleteAnimation.show(
       context: context,
       prayer: prayer,
@@ -281,7 +303,7 @@ class _PrayerRow extends StatelessWidget {
       );
     }
 
-    // ── STEP 6: compute FULL badge context from server ──────────────
+    // ── STEP 6: compute FULL badge context from server + qiyam ──────
     try {
       final prayerRepo = PrayerRepository(Supabase.instance.client);
       final recentLogs = await prayerRepo.getLogsInRange(
@@ -289,6 +311,15 @@ class _PrayerRow extends StatelessWidget {
         from: DateTime.now().subtract(const Duration(days: 60)),
         to: DateTime.now(),
       );
+
+      // ← تحميل بيانات القيام
+      Map<String, Map<String, dynamic>> qiyamData = {};
+      try {
+        final qiyamRepo = QiyamRepository(Supabase.instance.client);
+        qiyamData = await qiyamRepo.getRange(userId: userId, days: 60);
+      } catch (e) {
+        debugPrint('Qiyam load failed: $e');
+      }
 
       if (!context.mounted) return;
 
@@ -298,7 +329,16 @@ class _PrayerRow extends StatelessWidget {
         recentLogs: recentLogs,
         athkarItemsToday: mandatoryItems,
         athkarCompletedToday: athkarProv.progressMapFor(mandatoryItems),
+        qiyamLogsByDate: qiyamData,
       );
+
+      // ← مزامنة الألقاب مع الميداليات الجديدة
+      try {
+        final titleProv = context.read<TitleProvider>();
+        await titleProv.syncFromBadges(userId, badgeProv.unlockedIds);
+      } catch (e) {
+        debugPrint('Title sync error: $e');
+      }
 
       // ── STEP 7: badge animations, serial ──────────────────────────
       for (final badge in unlocked) {
@@ -327,17 +367,6 @@ class _PrayerRow extends StatelessWidget {
       );
     } catch (e) {
       debugPrint('Challenge advance error: $e');
-    }
-
-    if (!context.mounted) return;
-
-    // ── STEP 9: if user records qada but was locked, unlock ─────────
-    if (status == PrayerStatus.qada) {
-      final lock = context.read<LockProvider>();
-      if (lock.isLocked) {
-        await lock.unlock(userId);
-        await auth.refreshProfile();
-      }
     }
   }
 
@@ -386,5 +415,96 @@ class PrayerDetailPage extends StatelessWidget {
         child: _PrayerRow(prayer: prayer),
       ),
     );
+  }
+}
+
+class _MissedPrayerCard extends StatelessWidget {
+  final PrayerLog log;
+  const _MissedPrayerCard({required this.log});
+
+  @override
+  Widget build(BuildContext context) {
+    final isQada = log.status == PrayerStatus.qada;
+    final color = isQada ? AppColors.emerald : AppColors.warning;
+    final dateLabel =
+        '${log.date.year}-${log.date.month.toString().padLeft(2, '0')}-'
+        '${log.date.day.toString().padLeft(2, '0')}';
+
+    return GlassContainer(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(14),
+      child: Row(
+        children: [
+          Icon(
+            isQada ? Icons.check_circle : Icons.warning_amber_rounded,
+            color: color,
+            size: 24,
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  '${log.prayer.arabicName} — $dateLabel',
+                  style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                ),
+                Text(
+                  isQada
+                      ? 'تم القضاء والتوبة'
+                      : 'لم تُسجَّل — ${log.sayyiat} سيئة',
+                  style: AppText.caption.copyWith(color: color),
+                ),
+              ],
+            ),
+          ),
+          if (!isQada)
+            TextButton(
+              onPressed: () => _markQada(context),
+              child: const Text('قضاء'),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _markQada(BuildContext context) async {
+    final auth = context.read<AuthProvider>();
+    final provider = context.read<PrayerProvider>();
+    final confirm = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('تأكيد القضاء'),
+        content: Text(
+          'هل صليت ${log.prayer.arabicName} قضاءً عن يوم '
+          '${log.date.day}/${log.date.month}؟',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('نعم، صليتها'),
+          ),
+        ],
+      ),
+    );
+    if (confirm != true) return;
+
+    final r = await provider.recordQadaForDate(
+      userId: auth.user!.id,
+      prayer: log.prayer,
+      date: log.date,
+    );
+    if (!context.mounted) return;
+    if (r.success) {
+      await auth.refreshProfile();
+      if (!context.mounted) return;
+      AppSnackbar.success(context, 'تم قبول القضاء إن شاء الله');
+    } else {
+      AppSnackbar.error(context, r.error ?? 'فشل');
+    }
   }
 }

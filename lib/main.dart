@@ -14,41 +14,43 @@ import 'providers/streak_provider.dart';
 import 'providers/lock_provider.dart';
 import 'providers/daily_lesson_provider.dart';
 import 'providers/challenge_provider.dart';
-import 'providers/himmah_provider.dart';                   // ← جديد
+import 'providers/himmah_provider.dart';
+import 'providers/title_provider.dart';
+import 'providers/habit_streak_provider.dart';
+import 'providers/ledger_provider.dart';
+import 'providers/leaderboard_provider.dart';
 import 'pages/splash_page.dart';
+import 'services/adhan_audio_service.dart';
 import 'services/push_notification_service.dart';
 import 'theme/app_colors.dart';
-import 'theme/app_text.dart';
+// ✅ REMOVED: import 'theme/app_text.dart'; (redundant — app_theme.dart re-exports it)
 import 'theme/app_theme.dart';
 import 'widgets/error_boundary.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // ← 1. Global error handling (must be FIRST)
   ErrorBoundary.install();
 
-  // ← 2. Load env
   await EnvConfig.load();
   if (!EnvConfig.isConfigured) {
     runApp(const _ConfigErrorApp());
     return;
   }
 
-  // ← 3. Supabase
   await Supabase.initialize(
     url: EnvConfig.supabaseUrl,
     // ignore: deprecated_member_use
     anonKey: EnvConfig.supabaseAnonKey,
   );
 
-  // ← 4. Notifications (needs Supabase already up for logging)
   await PushNotificationService.init(
     onTap: (payload) {
       debugPrint('Notification tapped: $payload');
-      // TODO: navigate to relevant screen based on payload
     },
   );
+
+  await AdhanAudioService.init();
 
   runApp(const SohbaApp());
 }
@@ -71,7 +73,11 @@ class SohbaApp extends StatelessWidget {
           ChangeNotifierProvider(create: (_) => LockProvider()),
           ChangeNotifierProvider(create: (_) => DailyLessonProvider()),
           ChangeNotifierProvider(create: (_) => ChallengeProvider()),
-          ChangeNotifierProvider(create: (_) => HimmahProvider()), // ← جديد
+          ChangeNotifierProvider(create: (_) => HimmahProvider()),
+          ChangeNotifierProvider(create: (_) => TitleProvider()),
+          ChangeNotifierProvider(create: (_) => HabitStreakProvider()),
+          ChangeNotifierProvider(create: (_) => LedgerProvider()),
+          ChangeNotifierProvider(create: (_) => LeaderboardProvider()),
         ],
         child: MaterialApp(
           title: 'صحبة',

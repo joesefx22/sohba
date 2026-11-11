@@ -8,10 +8,12 @@ import '../providers/badge_provider.dart';
 import '../providers/challenge_provider.dart';
 import '../providers/daily_lesson_provider.dart';
 import '../providers/group_provider.dart';
+import '../providers/habit_streak_provider.dart';
 import '../providers/lock_provider.dart';
 import '../providers/notification_provider.dart';
 import '../providers/prayer_provider.dart';
 import '../providers/streak_provider.dart';
+import '../providers/title_provider.dart';
 import '../services/adhan_service.dart';
 import '../services/location_service.dart';
 import '../services/notification_scheduler.dart';
@@ -20,7 +22,7 @@ import '../theme/app_colors.dart';
 import '../theme/app_text.dart';
 import 'auth/login_page.dart';
 import 'group/join_group_page.dart';
-import 'home/home_page.dart';
+import 'main_shell_page.dart';
 
 class SplashPage extends StatefulWidget {
   const SplashPage({super.key});
@@ -37,7 +39,6 @@ class _SplashPageState extends State<SplashPage> {
   }
 
   Future<void> _route() async {
-    // ── Capture providers BEFORE any await ──────────────────────
     final auth = context.read<AuthProvider>();
     final streakProvider = context.read<StreakProvider>();
     final groupProvider = context.read<GroupProvider>();
@@ -48,19 +49,18 @@ class _SplashPageState extends State<SplashPage> {
     final lessonProvider = context.read<DailyLessonProvider>();
     final lockProvider = context.read<LockProvider>();
     final challengeProvider = context.read<ChallengeProvider>();
+    final titleProvider = context.read<TitleProvider>();
+    final habitsProvider = context.read<HabitStreakProvider>();
 
-    // ── Location (must be first — adhan times depend on it) ─────
     final loc = await LocationService.current();
     AdhanService.setLocation(loc.lat, loc.lng);
 
-    // ── Wait for AuthProvider to resolve its status ─────────────
     for (int i = 0; i < 20 && auth.status == AuthStatus.unknown; i++) {
       await Future.delayed(const Duration(milliseconds: 100));
     }
 
     if (!mounted) return;
 
-    // ── Not logged in → login ───────────────────────────────────
     if (!auth.isLoggedIn) {
       _go(const LoginPage());
       return;
@@ -68,7 +68,6 @@ class _SplashPageState extends State<SplashPage> {
 
     final userId = auth.user!.id;
 
-    // ── Daily maintenance (sweep missed prayers, streak loss) ──
     try {
       await SchedulerService.runDailyMaintenance(
         userId: userId,
@@ -80,7 +79,6 @@ class _SplashPageState extends State<SplashPage> {
 
     if (!mounted) return;
 
-    // ── Parallel data load ──────────────────────────────────────
     await Future.wait([
       groupProvider.loadForUser(userId),
       prayerProvider.loadToday(userId),
@@ -89,11 +87,25 @@ class _SplashPageState extends State<SplashPage> {
       notificationProvider.loadForUser(userId),
       athkarProvider.loadAll(userId),
       auth.refreshProfile(),
+      titleProvider.loadForUser(userId),
+      habitsProvider.loadForUser(userId),
     ]);
 
     if (!mounted) return;
 
-    lockProvider.syncFromProfile(auth.profile);
+    await lockProvider.loadFromServer(userId);
+
+    if (auth.profile == null) {
+      try {
+        await auth.refreshProfile();
+      } catch (_) {}
+      if (auth.profile == null) {
+        _go(const _ConnectionErrorPage());
+        return;
+      }
+    }
+
+    await titleProvider.syncFromBadges(userId, badgeProvider.unlockedIds);
 
     await lessonProvider.loadForUser(userId);
     final g = groupProvider.group;
@@ -103,13 +115,14 @@ class _SplashPageState extends State<SplashPage> {
 
     if (!mounted) return;
 
-    // ── Schedule notifications in background (fire & forget) ────
     NotificationScheduler.rescheduleAll().catchError((e) {
       debugPrint('NotificationScheduler error: $e');
     });
 
-    // ── Navigate ────────────────────────────────────────────────
-    _go(groupProvider.hasGroup ? const HomePage() : const JoinGroupPage());
+    // ← التوجيه إلى MainShellPage بدل HomePage
+    _go(groupProvider.hasGroup
+        ? const MainShellPage()
+        : const JoinGroupPage());
   }
 
   void _go(Widget page) {
@@ -151,6 +164,46 @@ class _SplashPageState extends State<SplashPage> {
               ),
             ),
           ],
+        ),
+      ),
+    );
+  }
+}
+
+class _ConnectionErrorPage extends StatelessWidget {
+  const _ConnectionErrorPage();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: AppColors.background,
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(32),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Icon(Icons.cloud_off, size: 64, color: AppColors.warning),
+              const SizedBox(height: 16),
+              Text('تعذّر الاتصال',
+                  style: AppText.heading.copyWith(fontSize: 22)),
+              const SizedBox(height: 8),
+              Text(
+                'تحقق من اتصالك بالإنترنت وحاول مرة أخرى',
+                textAlign: TextAlign.center,
+                style: AppText.caption,
+              ),
+              const SizedBox(height: 24),
+              FilledButton(
+                onPressed: () =>
+                    Navigator.of(context).pushNamedAndRemoveUntil(
+                  '/splash',
+                  (_) => false,
+                ),
+                child: const Text('إعادة المحاولة'),
+              ),
+            ],
+          ),
         ),
       ),
     );

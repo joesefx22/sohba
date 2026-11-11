@@ -14,6 +14,7 @@ class QiyamRepository {
     bool? duha,
     int? sunnahRakat,
     int? tahajjudRakat,
+    int? duaCount, // ← جديد
   }) async {
     final d = date ?? DateTime.now();
     await _client.rpc('log_qiyam', params: {
@@ -24,6 +25,7 @@ class QiyamRepository {
       'p_duha': duha,
       'p_sunnah_rakat': sunnahRakat,
       'p_tahajjud_rakat': tahajjudRakat,
+      'p_dua_count': duaCount, // ← جديد
     });
   }
 
@@ -40,13 +42,14 @@ class QiyamRepository {
     final map = <String, Map<String, dynamic>>{};
     for (final raw in (res as List)) {
       final row = Map<String, dynamic>.from(raw as Map);
-      final date = row['date'] as String; // already YYYY-MM-DD
+      final date = row['date'] as String;
       map[date] = {
         'witr': row['prayed_witr'] == true,
         'shaf': row['prayed_shaf'] == true,
         'duha': row['prayed_duha'] == true,
         'sunnah_rakat': row['sunnah_rakat'] ?? 0,
         'tahajjud_rakat': row['tahajjud_rakat'] ?? 0,
+        'dua_count': row['dua_count'] ?? 0, // ← جديد
       };
     }
     return map;

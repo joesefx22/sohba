@@ -27,10 +27,12 @@ class BadgeRepository {
     required String userId,
     required String badgeId,
   }) async {
-    await _client.from('user_badges').upsert({
-      'user_id': userId,
-      'badge_id': badgeId,
-      'unlocked_at': DateTime.now().toIso8601String(),
-    }, onConflict: 'user_id,badge_id');
+    await _client.rpc(
+      'unlock_badge',
+      params: {
+        'p_user_id': userId,
+        'p_badge_id': badgeId,
+      },
+    );
   }
 }

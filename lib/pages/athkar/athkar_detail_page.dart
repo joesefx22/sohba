@@ -18,6 +18,9 @@ class AthkarDetailPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final provider = context.watch<AthkarProvider>();
 
+    // ← يعرض فقط العناصر المفتوحة تدريجيًا
+    final items = provider.visibleItemsFor(category);
+
     return Scaffold(
       backgroundColor: AppColors.background,
       appBar: AppBar(
@@ -27,9 +30,9 @@ class AthkarDetailPage extends StatelessWidget {
       ),
       body: ListView.builder(
         padding: const EdgeInsets.all(16),
-        itemCount: category.items.length,
+        itemCount: items.length,
         itemBuilder: (_, i) {
-          final item = category.items[i];
+          final item = items[i];
           final progress = provider.progressFor(item.id);
           return _AthkarCard(item: item, progress: progress);
         },
@@ -54,7 +57,6 @@ class _AthkarCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          // Arabic text — Amiri line height for Quranic readability
           Text(
             item.arabic,
             textAlign: TextAlign.right,

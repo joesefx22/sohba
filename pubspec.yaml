@@ -62,7 +62,7 @@ flutter:
     - .env
     - assets/athkar/
     - assets/icon/
-    # - assets/audio/    # ← Uncomment when you add adhan.mp3
+    - assets/audio/
 
 # ============================================
 # LAUNCHER ICON

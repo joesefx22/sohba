@@ -29,6 +29,10 @@ class PrayerProvider extends ChangeNotifier {
   bool _loading = false;
   String? _error;
 
+  // history of missed + qada prayers (background-loaded)
+  List<PrayerLog> _missedHistory = [];
+  bool _missedLoading = false;
+
   PrayerProvider() {
     _repo = PrayerRepository(Supabase.instance.client);
   }
@@ -37,6 +41,9 @@ class PrayerProvider extends ChangeNotifier {
   bool get loading => _loading;
   String? get error => _error;
   DateTime get todayDate => _todayDate;
+
+  List<PrayerLog> get missedHistory => List.unmodifiable(_missedHistory);
+  bool get missedLoading => _missedLoading;
 
   PrayerTimeline timelineFor(PrayerName prayer) =>
       PrayerEngine.computeTimeline(prayer: prayer, date: _todayDate);
@@ -79,10 +86,27 @@ class PrayerProvider extends ChangeNotifier {
       }
 
       _subscribe(userId);
+
+      // 3. Load missed/qada history in the background
+      unawaited(loadMissedHistory(userId));
     } catch (e) {
       _error = e.toString();
     } finally {
       _loading = false;
+      notifyListeners();
+    }
+  }
+
+  /// تحميل الصلوات الفائتة/القضاء من التاريخ.
+  Future<void> loadMissedHistory(String userId) async {
+    _missedLoading = true;
+    notifyListeners();
+    try {
+      _missedHistory = await _repo.getMissedAndQadaHistory(userId: userId);
+    } catch (e) {
+      debugPrint('PrayerProvider.loadMissedHistory: $e');
+    } finally {
+      _missedLoading = false;
       notifyListeners();
     }
   }
@@ -100,14 +124,13 @@ class PrayerProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // RECORD via RPC
+  // RECORD via RPC (server computes bonus)
   // ============================================
 
   Future<PrayerRecordResult> recordPrayer({
     required String userId,
     required PrayerName prayer,
     required PrayerStatus status,
-    double bonusMultiplier = 1.0,
   }) async {
     // Fast client-side feedback (server re-validates).
     final timeline = timelineFor(prayer);
@@ -130,7 +153,6 @@ class PrayerProvider extends ChangeNotifier {
         status: status,
         logicalDate: _todayDate,
         timeline: timeline,
-        bonusMultiplier: bonusMultiplier,
       );
 
       final newLog = PrayerLog(
@@ -160,37 +182,69 @@ class PrayerProvider extends ChangeNotifier {
   }
 
   // ============================================
-  // TAWBAH
+  // TAWBAH (via RPC)
   // ============================================
 
   Future<PrayerRecordResult> markRepented({
     required String userId,
     required PrayerName prayer,
+    DateTime? date,
   }) async {
+    final targetDate = date ?? _todayDate;
     final current = _today[prayer];
-    if (current == null) {
+    if (current == null && date == null) {
       return const PrayerRecordResult(
           success: false, error: 'لا يوجد سجل للصلاة');
     }
-    if (!current.hasUnrepentedSayyiat) {
+    if (current != null && !current.hasUnrepentedSayyiat && date == null) {
       return const PrayerRecordResult(
           success: false, error: 'لا توجد سيئات للتوبة');
     }
 
     try {
-      await _repo.markRepented(
+      final res = await _repo.markRepentedRpc(
         userId: userId,
-        date: _todayDate,
         prayer: prayer,
+        date: targetDate,
       );
+      if (res['success'] != true) {
+        return PrayerRecordResult(
+          success: false,
+          error: res['message'] as String? ?? 'فشلت التوبة',
+        );
+      }
+      if (date == null) {
+        _today[prayer] = current!.copyWith(
+          sayyiatRepented: true,
+          repentedAt: DateTime.now(),
+        );
+        notifyListeners();
+      }
+      return const PrayerRecordResult(success: true);
+    } catch (e) {
+      return PrayerRecordResult(success: false, error: e.toString());
+    }
+  }
 
-      _today[prayer] = current.copyWith(
-        sayyiatRepented: true,
-        repentedAt: DateTime.now(),
+  // ============================================
+  // QADA for OLD missed prayers (via RPC)
+  // ============================================
+
+  Future<PrayerRecordResult> recordQadaForDate({
+    required String userId,
+    required PrayerName prayer,
+    required DateTime date,
+  }) async {
+    try {
+      await _repo.recordHistoricalQadaRpc(
+        userId: userId,
+        prayer: prayer,
+        date: date,
       );
-      notifyListeners();
-
-      return PrayerRecordResult(success: true, log: _today[prayer]);
+      await loadMissedHistory(userId);
+      return const PrayerRecordResult(success: true);
+    } on PostgrestException catch (e) {
+      return PrayerRecordResult(success: false, error: e.message);
     } catch (e) {
       return PrayerRecordResult(success: false, error: e.toString());
     }

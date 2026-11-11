@@ -58,6 +58,41 @@ class StreakProvider extends ChangeNotifier {
     return (_currentStreak - previous) / range;
   }
 
+  // ============================================
+  // STREAK PROTECTION
+  // ============================================
+
+  /// هل يمكن حماية يوم أمس؟
+  bool get canProtectYesterday {
+    if (_currentStreak == 0) return false;
+    if (_lastActiveDate == null) return false;
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final yesterday = today.subtract(const Duration(days: 1));
+    final dayBefore = today.subtract(const Duration(days: 2));
+    final last = DateTime(
+        _lastActiveDate!.year, _lastActiveDate!.month, _lastActiveDate!.day);
+    return last == dayBefore && yesterday != dayBefore;
+  }
+
+  /// يشتري حماية يوم أمس بالهمّة (السيرفر يخصم الهمّة).
+  Future<bool> protectYesterday(String userId) async {
+    try {
+      await Supabase.instance.client.rpc(
+        'protect_streak',
+        params: {
+          'p_user_id': userId,
+          'p_date': null, // السيرفر يستخدم أمس
+        },
+      );
+      await loadForUser(userId);
+      return true;
+    } catch (e) {
+      debugPrint('StreakProvider.protectYesterday: $e');
+      return false;
+    }
+  }
+
   // --- Loading ------------------------------------------------------------
 
   Future<void> loadForUser(String userId) async {
@@ -87,47 +122,41 @@ class StreakProvider extends ChangeNotifier {
   // --- Core ---------------------------------------------------------------
 
   /// Called after a successful prayer record.
-  /// Returns a milestone value if one was just reached.
+  /// Recomputes streak server-side (source of truth) and returns
+  /// a milestone value if one was just reached.
   Future<int?> recordActivity({required String userId}) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
 
-    // If already active today, no change.
     if (_activityDates.isNotEmpty && _activityDates.last == today) {
       return null;
     }
 
     final oldStreak = _currentStreak;
 
-    // Append today and recalculate
-    _activityDates = [..._activityDates, today];
-    _recalculate();
-    _lastActiveDate = now;
-
-    // Persist to profile
     try {
-      await Supabase.instance.client.from('profiles').update({
-        'current_streak': _currentStreak,
-        'longest_streak': _longestStreak,
-        'last_active_date': today.toIso8601String().split('T').first,
-      }).eq('id', userId);
+      final res = await Supabase.instance.client.rpc(
+        'recompute_streak',
+        params: {'p_user_id': userId},
+      );
+      _currentStreak = (res['streak'] as num).toInt();
+      _longestStreak = (res['longest'] as num).toInt();
+      _activityDates = [..._activityDates, today];
+      _lastActiveDate = now;
     } catch (e) {
-      debugPrint('StreakProvider persistence: $e');
+      debugPrint('StreakProvider.recordActivity: $e');
+      return null;
     }
 
     notifyListeners();
 
-    // Check milestone crossing
     for (final m in AppConfig.streakMilestones) {
-      if (oldStreak < m && _currentStreak >= m) {
-        return m;
-      }
+      if (oldStreak < m && _currentStreak >= m) return m;
     }
     return null;
   }
 
   /// Detect if the streak was broken while user was away.
-  /// Returns the lost streak value if it was lost, null otherwise.
   Future<int?> checkAndHandleLoss({required String userId}) async {
     if (_activityDates.isEmpty) return null;
 
@@ -155,7 +184,6 @@ class StreakProvider extends ChangeNotifier {
   List<DateTime> _deriveActivityDates(List<PrayerLog> logs) {
     final set = <DateTime>{};
     for (final log in logs) {
-      // Consider a day active if ANY prayer was prayed (not missed)
       if (log.status == PrayerStatus.congregation ||
           log.status == PrayerStatus.individual ||
           log.status == PrayerStatus.qada) {
@@ -167,7 +195,6 @@ class StreakProvider extends ChangeNotifier {
   }
 
   void _recalculate() {
-    // Deduplicate + sort
     final normalized = _activityDates
         .map((d) => DateTime(d.year, d.month, d.day))
         .toSet()
@@ -183,7 +210,6 @@ class StreakProvider extends ChangeNotifier {
     final today = DateTime(now.year, now.month, now.day);
     final yesterday = today.subtract(const Duration(days: 1));
 
-    // Streak must include today or yesterday
     if (normalized.last != today && normalized.last != yesterday) {
       _currentStreak = 0;
       return;

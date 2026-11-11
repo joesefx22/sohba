@@ -1,21 +1,14 @@
 import 'package:flutter/foundation.dart';
-import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 
-import '../config/app_config.dart';
+// ✅ REMOVED: import 'package:shared_preferences/shared_preferences.dart';
+// ✅ REMOVED: import '../config/app_config.dart';
 import '../models/prayer_log.dart';
+import 'adhan_audio_service.dart';
 import 'adhan_service.dart';
 import 'notification_service.dart';
 import 'push_notification_service.dart';
 
-/// Orchestrates all scheduled notifications.
-///
-/// Called from:
-///   - SplashPage (after login / location resolved)
-///   - SettingsPage (when user toggles options)
-///   - Location change (future)
-///
-/// IDs are deterministic so we can cancel/reschedule cleanly.
 class NotificationScheduler {
   NotificationScheduler._();
 
@@ -23,7 +16,7 @@ class NotificationScheduler {
   static const int _idAdhanBase   = 1000;  // 1000..1004 (5 prayers)
   static const int _idReminderBase = 2000; // 2000..2004 (reminders before adhan)
   static const int _idStreak       = 3000;
-  static const int _idDailyLesson = 4000;
+  // ✅ REMOVED: static const int _idDailyLesson = 4000;
 
   /// Full reschedule — call this on app start and after any preference change.
   static Future<void> rescheduleAll() async {
@@ -32,7 +25,6 @@ class NotificationScheduler {
       return;
     }
 
-    // 1. Check master toggle
     final enabled = await NotificationService.isEnabled();
     if (!enabled) {
       await PushNotificationService.cancelAll();
@@ -40,10 +32,8 @@ class NotificationScheduler {
       return;
     }
 
-    // 2. Clear old ones
     await PushNotificationService.cancelAll();
 
-    // 3. Schedule per category
     await _schedulePrayerAdhans();
     await _scheduleStreakReminder();
 
@@ -64,8 +54,6 @@ class NotificationScheduler {
       final prayer = PrayerName.values[i];
       final adhanTime = AdhanService.timeFor(prayer, onDate: now);
 
-      // If adhan already passed today, skip (will be rescheduled tomorrow
-      // when the app is opened again).
       if (adhanTime.isBefore(now)) continue;
 
       // ---- Adhan notification ----
@@ -79,6 +67,9 @@ class NotificationScheduler {
           payload: 'prayer:${prayer.name}',
           isAdhan: true,
         );
+
+        // ⏰ فعّل صوت الأذان (لو الملف موجود)
+        await AdhanAudioService.init();
       }
 
       // ---- Pre-adhan reminder ----
@@ -126,7 +117,6 @@ class NotificationScheduler {
     final now = DateTime.now();
     var target = DateTime(now.year, now.month, now.day, hour);
 
-    // If 9 PM already passed today, schedule for tomorrow.
     if (target.isBefore(now)) {
       target = target.add(const Duration(days: 1));
     }
@@ -145,7 +135,6 @@ class NotificationScheduler {
   // ONE-OFF NOTIFICATIONS (immediate)
   // ============================================
 
-  /// Called when a badge is unlocked — schedule for 3 seconds from now.
   static Future<void> showBadgeUnlock({
     required String badgeName,
     required String description,
@@ -163,7 +152,6 @@ class NotificationScheduler {
     );
   }
 
-  /// Called when a streak milestone is reached.
   static Future<void> showStreakMilestone(int days) async {
     if (!PushNotificationService.isInitialized) return;
     if (!await NotificationService.isEnabled()) return;
@@ -187,7 +175,6 @@ class NotificationScheduler {
 
   static Future<void> cancelAll() => PushNotificationService.cancelAll();
 
-  /// Test: schedule a notification 5 seconds from now.
   static Future<void> sendTest() async {
     await PushNotificationService.schedule(
       id: 9999,

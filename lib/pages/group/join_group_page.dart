@@ -9,7 +9,7 @@ import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 import '../../widgets/app_button.dart';
 import '../../widgets/error_state.dart';
-import '../home/home_page.dart';
+import '../main_shell_page.dart';
 
 class JoinGroupPage extends StatefulWidget {
   const JoinGroupPage({super.key});
@@ -23,11 +23,9 @@ class _JoinGroupPageState extends State<JoinGroupPage>
   late final TabController _tabs;
   bool _loading = false;
 
-  // Join fields (name only)
   final _joinFormKey = GlobalKey<FormState>();
   final _joinNameCtrl = TextEditingController();
 
-  // Create fields
   final _createFormKey = GlobalKey<FormState>();
   final _createNameCtrl = TextEditingController();
   final _createDescCtrl = TextEditingController();
@@ -61,7 +59,7 @@ class _JoinGroupPageState extends State<JoinGroupPage>
     setState(() => _loading = false);
 
     if (ok) {
-      _goHome();
+      _goShell();
     } else {
       AppSnackbar.error(
           context, context.read<GroupProvider>().error ?? 'فشل الانضمام');
@@ -84,16 +82,16 @@ class _JoinGroupPageState extends State<JoinGroupPage>
     setState(() => _loading = false);
 
     if (ok) {
-      _goHome();
+      _goShell();
     } else {
       AppSnackbar.error(
           context, context.read<GroupProvider>().error ?? 'فشل إنشاء المجموعة');
     }
   }
 
-  void _goHome() {
+  void _goShell() {
     Navigator.of(context).pushReplacement(
-      MaterialPageRoute(builder: (_) => const HomePage()),
+      MaterialPageRoute(builder: (_) => const MainShellPage()),
     );
   }
 

@@ -30,6 +30,7 @@ class _ChallengesPageState extends State<ChallengesPage> {
   Widget build(BuildContext context) {
     final p = context.watch<ChallengeProvider>();
     final auth = context.watch<AuthProvider>();
+    final group = context.watch<GroupProvider>();
 
     return GlassScaffold(
       appBar: AppBar(
@@ -37,10 +38,12 @@ class _ChallengesPageState extends State<ChallengesPage> {
         backgroundColor: Colors.transparent,
         elevation: 0,
         actions: [
-          IconButton(
-            icon: const Icon(Icons.add),
-            onPressed: () => _showCreate(context, auth.user!.id),
-          ),
+          // ← جديد: زر "إضافة" يظهر للأدمن فقط
+          if (group.isAdmin)
+            IconButton(
+              icon: const Icon(Icons.add),
+              onPressed: () => _showCreate(context, auth.user!.id),
+            ),
         ],
       ),
       body: SafeArea(

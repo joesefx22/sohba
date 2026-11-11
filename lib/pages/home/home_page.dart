@@ -10,14 +10,17 @@ import '../../providers/group_provider.dart';
 import '../../providers/lock_provider.dart';
 import '../../providers/daily_lesson_provider.dart';
 import '../../providers/badge_provider.dart';
+import '../../providers/habit_streak_provider.dart';   // ← ✅ هذا يحل HabitStreak
+import '../../providers/title_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_motion.dart';
-import '../../theme/app_theme.dart';
+import '../../theme/app_text.dart';
 import '../../widgets/animated_number.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
 import '../../widgets/iman_progress_bar.dart';
 import '../../widgets/prayer_card.dart';
+import '../../widgets/streak_protection_sheet.dart';
 import '../prayer/prayer_page.dart';
 import '../athkar/athkar_page.dart';
 import '../badges/badges_page.dart';
@@ -25,8 +28,12 @@ import '../group/group_leaderboard_page.dart';
 import '../lock/lock_screen.dart';
 import '../lessons/daily_lesson_page.dart';
 import '../challenges/challenges_page.dart';
-import '../himmah/himmah_page.dart';                      // ← جديد
+import '../himmah/himmah_page.dart';
+import '../titles/titles_page.dart';
+import '../ledger/ledger_page.dart';
+import '../qiyam/qiyam_page.dart';
 
+// ⚠️ HomePage لسه موجودة للتوافق. MainShellPage هو الـ entry point الفعلي.
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
 
@@ -43,7 +50,7 @@ class _HomePageState extends State<HomePage> {
       body: IndexedStack(
         index: _tab,
         children: const [
-          _DashboardTab(),
+          DashboardTab(),
           PrayerPage(),
           AthkarPage(),
           BadgesPage(),
@@ -80,7 +87,6 @@ class _HomePageState extends State<HomePage> {
     );
   }
 
-  /// inactive -> muted; active -> mint icon in a soft emerald pill + glow.
   Widget _navItem(int idx, IconData outline, IconData filled, String label) {
     final selected = _tab == idx;
     final color = selected ? AppColors.mint : AppColors.textSecondary;
@@ -127,8 +133,8 @@ class _HomePageState extends State<HomePage> {
   }
 }
 
-class _DashboardTab extends StatelessWidget {
-  const _DashboardTab();
+class DashboardTab extends StatelessWidget {
+  const DashboardTab({super.key});
 
   @override
   Widget build(BuildContext context) {
@@ -140,18 +146,17 @@ class _DashboardTab extends StatelessWidget {
     final lesson = context.watch<DailyLessonProvider>();
     final badges = context.watch<BadgeProvider>();
     final group = context.watch<GroupProvider>().group;
+    final habits = context.watch<HabitStreakProvider>();
+    final titles = context.watch<TitleProvider>();
     final profile = auth.profile;
 
-    // ── Lock gate (unchanged) ────────────────────────────────────
     if (lock.isLocked) return const LockScreen();
-    // ─────────────────────────────────────────────────────────────
 
     final iman = ((profile?['iman'] ?? 0) as num).toDouble();
     final himmah = (profile?['himmah'] ?? 0) as int;
     final totalHasanat = (profile?['total_hasanat'] ?? 0) as int;
     final focus = prayer.currentFocusPrayer;
 
-    // level 1 starts at 0 iman, level 2 at 100, etc. (unchanged math)
     final level = (iman / 100).floor() + 1;
     final progressInLevel = (iman % 100) / 100.0;
     final remaining = 100 - (iman % 100);
@@ -165,7 +170,6 @@ class _DashboardTab extends StatelessWidget {
         );
 
     final sections = <Widget>[
-      // 1. Greeting + streak + bell
       _pad(Row(
         children: [
           Expanded(
@@ -191,7 +195,6 @@ class _DashboardTab extends StatelessWidget {
         ],
       )),
 
-      // 2. Iman hero
       _pad(GlassContainer(
         level: GlassLevel.featured,
         accent: AppColors.iman,
@@ -225,7 +228,6 @@ class _DashboardTab extends StatelessWidget {
         ),
       )),
 
-      // 3. Current prayer (hero)
       if (focus != null) ...[
         _title('الصلاة القادمة'),
         PrayerCard(
@@ -237,7 +239,6 @@ class _DashboardTab extends StatelessWidget {
         ),
       ],
 
-      // 4. Today's prayers — compact strip, not 5 big cards
       _title('صلوات اليوم', trailing: '${prayer.todayCompletedCount}/5'),
       _pad(GlassContainer(
         padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
@@ -249,7 +250,6 @@ class _DashboardTab extends StatelessWidget {
         ),
       )),
 
-      // 5. Daily lesson + challenges (secondary)
       if (lesson.lesson != null)
         _pad(_linkRow(
           icon: Icons.headphones,
@@ -268,8 +268,68 @@ class _DashboardTab extends StatelessWidget {
             MaterialPageRoute(builder: (_) => const ChallengesPage()),
           ),
         )),
+      if (group != null)
+        _pad(_linkRow(
+          icon: Icons.leaderboard_outlined,
+          title: 'ترتيب المجموعة',
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const GroupLeaderboardPage()),
+          ),
+        )),
 
-      // 6. Stats strip (one compact card instead of 4 tiles)
+      if (streak.canProtectYesterday)
+        _pad(GlassContainer(
+          level: GlassLevel.featured,
+          accent: AppColors.warning,
+          borderRadius: 18,
+          padding: const EdgeInsets.all(14),
+          onTap: () => StreakProtectionSheet.show(context),
+          child: Row(
+            children: [
+              const Icon(Icons.shield, color: AppColors.warning, size: 26),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text('فاتك يوم أمس — احمِ سلسلتك',
+                        style: AppText.body
+                            .copyWith(fontWeight: FontWeight.w600)),
+                    Text(
+                        'ادفع 1 همّة للمحافظة على ${streak.currentStreak} يوم',
+                        style: AppText.caption),
+                  ],
+                ),
+              ),
+              const Icon(Icons.chevron_left, color: AppColors.textSecondary),
+            ],
+          ),
+        )),
+
+      if (habits.active.isNotEmpty) ...[
+        _title('عاداتك المتصلة'),
+        _pad(SizedBox(
+          height: 78,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            itemCount: habits.active.take(8).length,
+            separatorBuilder: (_, _) => const SizedBox(width: 8), // ← ✅ (_, _)
+            itemBuilder: (_, i) => _habitChip(context, habits.active[i]),
+          ),
+        )),
+      ],
+
+      if (titles.activeTitle != null)
+        _pad(_linkRow(
+          icon: Icons.workspace_premium,
+          label: 'لقبك',
+          title: titles.activeTitle!.nameAr,
+          onTap: () => Navigator.of(context).push(
+            MaterialPageRoute(builder: (_) => const TitlesPage()),
+          ),
+        )),
+
       _pad(GlassContainer(
         padding: const EdgeInsets.symmetric(vertical: 14),
         child: Row(
@@ -280,8 +340,8 @@ class _DashboardTab extends StatelessWidget {
               Icons.diamond_outlined,
               '$himmah',
               'الهمّة',
-              AppColors.gold,                                     // ← جديد
-              onTap: () => Navigator.of(context).push(            // ← جديد
+              AppColors.gold,
+              onTap: () => Navigator.of(context).push(
                 MaterialPageRoute(builder: (_) => const HimmahPage()),
               ),
             ),
@@ -289,6 +349,38 @@ class _DashboardTab extends StatelessWidget {
             _stat(Icons.emoji_events_outlined, '${badges.unlockedCount}',
                 'ميداليات', AppColors.textSecondary),
           ],
+        ),
+      )),
+
+      _pad(Row(
+        children: [
+          Expanded(
+            child: _linkRow(
+              icon: Icons.workspace_premium,
+              title: 'الألقاب',
+              trailing: '${titles.unlockedIds.length}',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const TitlesPage()),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: _linkRow(
+              icon: Icons.receipt_long,
+              title: 'سجل رصيدي',
+              onTap: () => Navigator.of(context).push(
+                MaterialPageRoute(builder: (_) => const LedgerPage()),
+              ),
+            ),
+          ),
+        ],
+      )),
+      _pad(_linkRow(
+        icon: Icons.nights_stay,
+        title: 'سجّل القيام والسنن',
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute(builder: (_) => const QiyamPage()),
         ),
       )),
     ];
@@ -303,6 +395,8 @@ class _DashboardTab extends StatelessWidget {
             streak.loadForUser(uid),
             lesson.loadForUser(uid),
             auth.refreshProfile(),
+            habits.loadForUser(uid),
+            titles.loadForUser(uid),
           ]);
         },
         child: ListView(
@@ -397,6 +491,39 @@ class _DashboardTab extends StatelessWidget {
     );
   }
 
+  Widget _habitChip(BuildContext context, HabitStreak h) {
+    return Container(
+      width: 110,
+      padding: const EdgeInsets.all(10),
+      decoration: BoxDecoration(
+        color: AppColors.emerald.withAlpha(30),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(color: AppColors.emerald.withAlpha(90)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Row(
+            children: [
+              const Icon(Icons.local_fire_department,
+                  size: 16, color: AppColors.streak),
+              const SizedBox(width: 4),
+              Text('${h.currentStreak}',
+                  style: AppText.numberSmall.copyWith(
+                      fontSize: 18, color: AppColors.streak)),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(h.labelAr,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: AppText.caption.copyWith(fontSize: 11)),
+        ],
+      ),
+    );
+  }
+
   Widget _linkRow({
     required IconData icon,
     required String title,
@@ -431,7 +558,6 @@ class _DashboardTab extends StatelessWidget {
     );
   }
 
-  // ── ✅ جديد: `_stat` بقى يدعم onTap ──────────────────────────
   Widget _stat(IconData icon, String value, String label, Color color,
       {VoidCallback? onTap}) {
     final content = Column(

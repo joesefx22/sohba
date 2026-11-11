@@ -6,6 +6,7 @@ import '../../providers/auth_provider.dart';
 import '../../providers/athkar_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/glass_container.dart';
 import 'athkar_detail_page.dart';
 
@@ -36,31 +37,67 @@ class _AthkarPageState extends State<AthkarPage> {
   Widget build(BuildContext context) {
     final provider = context.watch<AthkarProvider>();
 
-    if (provider.loading || provider.categories.isEmpty) {
-      return const Scaffold(
-        backgroundColor: Colors.transparent,
-        body: Center(
-          child: CircularProgressIndicator(color: AppColors.mint),
-        ),
-      );
-    }
-
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: SafeArea(
-        child: ListView(
+      body: SafeArea(child: _buildBody(provider)),
+    );
+  }
+
+  Widget _buildBody(AthkarProvider provider) {
+    switch (provider.state) {
+      case AthkarState.loading:
+        return const Center(
+          child: CircularProgressIndicator(color: AppColors.mint),
+        );
+
+      case AthkarState.error:
+      case AthkarState.empty:
+        return Center(
+          child: Padding(
+            padding: const EdgeInsets.all(32),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.cloud_off,
+                    size: 56, color: AppColors.textSecondary),
+                const SizedBox(height: 16),
+                Text('تعذّر تحميل الأذكار',
+                    style: AppText.section, textAlign: TextAlign.center),
+                const SizedBox(height: 8),
+                Text(
+                  provider.errorMessage ?? 'حدث خطأ غير متوقع',
+                  style: AppText.caption,
+                  textAlign: TextAlign.center,
+                ),
+                const SizedBox(height: 24),
+                AppButton.primary(
+                  label: 'إعادة المحاولة',
+                  onPressed: () {
+                    final uid = context.read<AuthProvider>().user?.id;
+                    if (uid != null) provider.retry(uid);
+                  },
+                  icon: Icons.refresh,
+                  expanded: false,
+                ),
+              ],
+            ),
+          ),
+        );
+
+      case AthkarState.ready:
+        return ListView(
           padding: const EdgeInsets.all(16),
           children: [
             Text('الأذكار', style: AppText.heading),
             const SizedBox(height: 4),
-            Text('حصن المسلم — أذكار الصباح والمساء', style: AppText.caption),
+            Text('حصن المسلم — أذكار الصباح والمساء',
+                style: AppText.caption),
             const SizedBox(height: 20),
             ...provider.categories
                 .map((c) => _categoryCard(context, provider, c)),
           ],
-        ),
-      ),
-    );
+        );
+    }
   }
 
   Widget _categoryCard(
@@ -92,11 +129,8 @@ class _AthkarPageState extends State<AthkarPage> {
                 color: AppColors.mint.withAlpha(45),
                 borderRadius: BorderRadius.circular(14),
               ),
-              child: Icon(
-                _iconFor(cat.icon),
-                color: AppColors.mint,
-                size: 26,
-              ),
+              child: Icon(_iconFor(cat.icon),
+                  color: AppColors.mint, size: 26),
             ),
             const SizedBox(width: 14),
             Expanded(
@@ -105,10 +139,7 @@ class _AthkarPageState extends State<AthkarPage> {
                 children: [
                   Row(
                     children: [
-                      Text(
-                        cat.nameAr,
-                        style: AppText.subtitle,
-                      ),
+                      Text(cat.nameAr, style: AppText.subtitle),
                       const SizedBox(width: 6),
                       if (cat.isMandatory)
                         Container(
@@ -118,14 +149,11 @@ class _AthkarPageState extends State<AthkarPage> {
                             color: AppColors.gold.withAlpha(50),
                             borderRadius: BorderRadius.circular(6),
                           ),
-                          child: const Text(
-                            'يومي',
-                            style: TextStyle(
-                              fontSize: 9,
-                              color: AppColors.gold,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
+                          child: const Text('يومي',
+                              style: TextStyle(
+                                  fontSize: 9,
+                                  color: AppColors.gold,
+                                  fontWeight: FontWeight.bold)),
                         ),
                     ],
                   ),
@@ -141,10 +169,7 @@ class _AthkarPageState extends State<AthkarPage> {
                     ),
                   ),
                   const SizedBox(height: 4),
-                  Text(
-                    '$done / $total',
-                    style: AppText.caption,
-                  ),
+                  Text('$done / $total', style: AppText.caption),
                 ],
               ),
             ),
