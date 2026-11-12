@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 import '../../providers/auth_provider.dart';
 import '../../providers/daily_lesson_provider.dart';
@@ -10,6 +11,17 @@ import '../../widgets/glass_scaffold.dart';
 
 class DailyLessonPage extends StatelessWidget {
   const DailyLessonPage({super.key});
+
+  Future<void> _openVideo(BuildContext context, String url) async {
+    final uri = Uri.tryParse(url);
+    if (uri == null) return;
+    final ok = await launchUrl(uri, mode: LaunchMode.externalApplication);
+    if (!ok && context.mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('تعذّر فتح الرابط')),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +47,7 @@ class DailyLessonPage extends StatelessWidget {
     }
 
     final lesson = p.lesson!;
+    final hasVideo = (lesson.videoUrl ?? '').isNotEmpty;
 
     return GlassScaffold(
       appBar: AppBar(
@@ -53,10 +66,18 @@ class DailyLessonPage extends StatelessWidget {
                 children: [
                   Row(
                     children: [
-                      const Icon(Icons.headphones,
-                          color: AppColors.goldBright, size: 24),
+                      Icon(
+                        hasVideo
+                            ? Icons.play_circle_outline
+                            : Icons.headphones,
+                        color: AppColors.goldBright,
+                        size: 24,
+                      ),
                       const SizedBox(width: 8),
-                      Text(lesson.durationLabel, style: AppText.caption),
+                      Text(
+                        hasVideo ? 'فيديو' : lesson.durationLabel,
+                        style: AppText.caption,
+                      ),
                       const Spacer(),
                       if (p.listened)
                         const Row(children: [
@@ -73,41 +94,69 @@ class DailyLessonPage extends StatelessWidget {
                     lesson.title,
                     style: AppText.section.copyWith(fontSize: 22),
                   ),
-                  if (lesson.transcript != null) ...[
-                    const SizedBox(height: 16),
+
+                  // 🎥 Video button
+                  if (hasVideo) ...[
+                    const SizedBox(height: 20),
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => _openVideo(context, lesson.videoUrl!),
+                        icon: const Icon(Icons.play_arrow, size: 28),
+                        label: const Text('شاهد الفيديو'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.gold,
+                          foregroundColor: AppColors.background,
+                          padding: const EdgeInsets.symmetric(vertical: 16),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  // 🎧 Audio button
+                  if ((lesson.audioUrl ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 10),
+                    SizedBox(
+                      width: double.infinity,
+                      child: OutlinedButton.icon(
+                        onPressed: () =>
+                            _openVideo(context, lesson.audioUrl!),
+                        icon: const Icon(Icons.headphones),
+                        label: const Text('استمع للصوت'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: AppColors.mint,
+                          side: BorderSide(
+                              color: AppColors.emerald.withAlpha(120)),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
+                        ),
+                      ),
+                    ),
+                  ],
+
+                  if (lesson.transcript != null &&
+                      lesson.transcript!.isNotEmpty) ...[
+                    const SizedBox(height: 20),
                     Text(
                       lesson.transcript!,
                       style: AppText.body.copyWith(height: 1.7),
                     ),
                   ],
-                  const SizedBox(height: 24),
-                  Row(
-                    children: [
-                      Expanded(
-                        child: FilledButton.icon(
-                          onPressed: () {}, // TODO: audio player
-                          icon: const Icon(Icons.play_arrow),
-                          label: const Text('استمع'),
-                          style: FilledButton.styleFrom(
-                            backgroundColor: AppColors.emerald,
-                            foregroundColor: Colors.white,
-                            padding:
-                                const EdgeInsets.symmetric(vertical: 14),
-                          ),
+
+                  const SizedBox(height: 20),
+                  if (!p.listened)
+                    SizedBox(
+                      width: double.infinity,
+                      child: FilledButton.icon(
+                        onPressed: () => p.markListened(auth.user!.id),
+                        icon: const Icon(Icons.check),
+                        label: const Text('تم الاستماع'),
+                        style: FilledButton.styleFrom(
+                          backgroundColor: AppColors.emerald,
+                          foregroundColor: Colors.white,
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                         ),
                       ),
-                      if (!p.listened) ...[
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: OutlinedButton.icon(
-                            onPressed: () => p.markListened(auth.user!.id),
-                            icon: const Icon(Icons.check),
-                            label: const Text('تم'),
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
+                    ),
                 ],
               ),
             ),

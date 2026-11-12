@@ -57,14 +57,18 @@ class AthkarSeeder {
     }
   }
 
-  /// Check if the DB already has athkar seeded.
+  /// Check if the DB has ALL athkar items seeded (not just some).
   static Future<bool> isSeeded(SupabaseClient client) async {
     try {
-      final res = await client
-          .from('athkar_categories')
-          .select('id')
-          .limit(1);
-      return (res as List).isNotEmpty;
+      final cats = await client.from('athkar_categories').select('id');
+      if ((cats as List).isEmpty) return false;
+
+      final items = await client.from('athkar_items').select('id');
+      final loaded = await AthkarService.loadAll();
+      final expectedItems =
+          loaded.fold<int>(0, (s, c) => s + c.items.length);
+
+      return (items as List).length >= expectedItems;
     } catch (_) {
       return false;
     }

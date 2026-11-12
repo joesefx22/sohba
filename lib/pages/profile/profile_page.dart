@@ -134,23 +134,31 @@ class ProfilePage extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const QiyamPage()),
             );
           }),
-          _item(Icons.admin_panel_settings, 'لوحة الإدارة', AppColors.gold,
-              () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AdminDashboardPage()),
-            );
-          }),
-          _item(Icons.play_lesson, 'إدارة الدروس', AppColors.gold, () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const AdminLessonsPage()),
-            );
-          }),
-          _item(Icons.cloud_upload, 'رفع الأذكار (أدمن)',
-              AppColors.rarityEpic, () {
-            Navigator.of(context).push(
-              MaterialPageRoute(builder: (_) => const SeedAthkarPage()),
-            );
-          }),
+
+          // ✅ يظهر للأدمن فقط
+          if (auth.isAdmin) ...[
+            _item(Icons.admin_panel_settings, 'لوحة الإدارة', AppColors.gold,
+                () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const AdminDashboardPage()),
+              );
+            }),
+            _item(Icons.play_lesson, 'إدارة الدروس', AppColors.gold, () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const AdminLessonsPage()),
+              );
+            }),
+            _item(Icons.cloud_upload, 'رفع الأذكار (أدمن)',
+                AppColors.rarityEpic, () {
+              Navigator.of(context).push(
+                MaterialPageRoute(
+                    builder: (_) => const SeedAthkarPage()),
+              );
+            }),
+          ],
+
           _item(Icons.logout, 'تسجيل الخروج', AppColors.error, () async {
             final confirm = await showDialog<bool>(
               context: context,

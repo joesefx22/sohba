@@ -4,7 +4,6 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 // ✅ REMOVED: import 'package:shared_preferences/shared_preferences.dart';
 // ✅ REMOVED: import '../config/app_config.dart';
 import '../models/prayer_log.dart';
-import 'adhan_audio_service.dart';
 import 'adhan_service.dart';
 import 'notification_service.dart';
 import 'push_notification_service.dart';
@@ -56,7 +55,7 @@ class NotificationScheduler {
 
       if (adhanTime.isBefore(now)) continue;
 
-      // ---- Adhan notification ----
+      // ✅ Adhan notification with custom sound (works when app closed)
       if (adhanEnabled) {
         await PushNotificationService.schedule(
           id: _idAdhanBase + i,
@@ -65,11 +64,8 @@ class NotificationScheduler {
           when: adhanTime,
           channelId: PushNotificationService.channelAdhan,
           payload: 'prayer:${prayer.name}',
-          isAdhan: true,
+          isAdhan: true, // ← ده اللي بيفعّل الصوت
         );
-
-        // ⏰ فعّل صوت الأذان (لو الملف موجود)
-        await AdhanAudioService.init();
       }
 
       // ---- Pre-adhan reminder ----

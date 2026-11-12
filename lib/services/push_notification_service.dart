@@ -4,29 +4,19 @@ import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 
-/// Thin wrapper around flutter_local_notifications.
-///
-/// Responsibilities:
-///   - Initialize plugin + timezone DB
-///   - Create Android notification channels
-///   - Request permissions (Android 13+, iOS)
-///   - Expose zonedSchedule / cancel / cancelAll
 class PushNotificationService {
   PushNotificationService._();
 
   static final _plugin = FlutterLocalNotificationsPlugin();
   static bool _initialized = false;
 
-  /// Handler when the user taps a notification (app opened).
   static void Function(String? payload)? onTap;
 
   static FlutterLocalNotificationsPlugin get plugin => _plugin;
   static bool get isInitialized => _initialized;
 
-  // ============================================
-  // CHANNEL IDS
-  // ============================================
-  static const channelAdhan  = 'sohba.adhan';
+  // ⚠️ v2 channels — Android caches sound per channel, so bump version
+  static const channelAdhan  = 'sohba.adhan.v2';
   static const channelPrayer = 'sohba.prayer';
   static const channelStreak = 'sohba.streak';
   static const channelBadge  = 'sohba.badge';
@@ -35,14 +25,10 @@ class PushNotificationService {
   static const _channelSpecs = <({String id, String name, String desc})>[
     (id: channelAdhan,  name: 'الأذان',         desc: 'صوت الأذان عند دخول وقت الصلاة'),
     (id: channelPrayer, name: 'تنبيه الصلاة',    desc: 'تذكير قبل وبعد الأذان'),
-    (id: channelStreak, name: 'المواصلة',       desc: 'تذكير قبل منتصف الليل للحفاظ على سلسلتك'),
+    (id: channelStreak, name: 'المواصلة',       desc: 'تذكير قبل منتصف الليل'),
     (id: channelBadge,  name: 'الميداليات',      desc: 'عند فتح ميدالية جديدة'),
     (id: channelSystem, name: 'تنبيهات عامة',    desc: 'إشعارات النظام'),
   ];
-
-  // ============================================
-  // INIT
-  // ============================================
 
   static Future<void> init({
     void Function(String? payload)? onTap,
@@ -50,15 +36,13 @@ class PushNotificationService {
     if (_initialized) return;
     PushNotificationService.onTap = onTap;
 
-    // 1. Timezone database (required for zonedSchedule)
     tz.initializeTimeZones();
 
-    // 2. Android icon
-    const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
+    const androidSettings =
+        AndroidInitializationSettings('@mipmap/ic_launcher');
 
-    // 3. iOS settings
     const iosSettings = DarwinInitializationSettings(
-      requestAlertPermission: false,  // we request explicitly later
+      requestAlertPermission: false,
       requestBadgePermission: false,
       requestSoundPermission: false,
     );
@@ -76,20 +60,23 @@ class PushNotificationService {
       onDidReceiveBackgroundNotificationResponse: _backgroundHandler,
     );
 
-    // 4. Create Android channels
     if (Platform.isAndroid) {
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       if (android != null) {
         for (final spec in _channelSpecs) {
+          final isAdhan = spec.id == channelAdhan;
           await android.createNotificationChannel(
             AndroidNotificationChannel(
               spec.id,
               spec.name,
               description: spec.desc,
-              importance: spec.id == channelAdhan
-                  ? Importance.max
-                  : Importance.high,
+              importance:
+                  isAdhan ? Importance.max : Importance.high,
+              playSound: true,
+              sound: isAdhan
+                  ? const RawResourceAndroidNotificationSound('adhan')
+                  : null,
             ),
           );
         }
@@ -100,31 +87,16 @@ class PushNotificationService {
     debugPrint('PushNotificationService: initialized');
   }
 
-  // ============================================
-  // PERMISSIONS
-  // ============================================
-
-  /// Returns true if notification permission is granted.
   static Future<bool> requestPermissions() async {
-    if (!_initialized) {
-      debugPrint('PushNotificationService: not initialized');
-      return false;
-    }
-
+    if (!_initialized) return false;
     if (Platform.isAndroid) {
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       if (android == null) return false;
-
-      // Android 13+
       final granted = await android.requestNotificationsPermission();
-
-      // Android 12+ exact alarms
       await android.requestExactAlarmsPermission();
-
       return granted ?? false;
     }
-
     if (Platform.isIOS) {
       final ios = _plugin.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
@@ -135,34 +107,25 @@ class PushNotificationService {
       );
       return granted ?? false;
     }
-
     return true;
   }
 
   static Future<bool> hasPermission() async {
     if (!_initialized) return false;
-
     if (Platform.isAndroid) {
       final android = _plugin.resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin>();
       return await android?.areNotificationsEnabled() ?? false;
     }
-
     if (Platform.isIOS) {
       final ios = _plugin.resolvePlatformSpecificImplementation<
           IOSFlutterLocalNotificationsPlugin>();
       final settings = await ios?.checkPermissions();
       return settings?.isEnabled ?? false;
     }
-
     return true;
   }
 
-  // ============================================
-  // SCHEDULING
-  // ============================================
-
-  /// Schedule a notification at a specific local time.
   static Future<void> schedule({
     required int id,
     required String title,
@@ -178,7 +141,11 @@ class PushNotificationService {
 
     final tzWhen = tz.TZDateTime.from(when, tz.local);
 
-    // Android details
+    // ✅ Custom sound for adhan (Android)
+    final androidSound = (isAdhan && playSound)
+        ? const RawResourceAndroidNotificationSound('adhan')
+        : null;
+
     final androidDetails = AndroidNotificationDetails(
       channelId,
       _channelSpecs.firstWhere((s) => s.id == channelId).name,
@@ -187,6 +154,7 @@ class PushNotificationService {
       importance: isAdhan ? Importance.max : Importance.high,
       priority: isAdhan ? Priority.max : Priority.high,
       playSound: playSound,
+      sound: androidSound,
       enableVibration: true,
       category: isAdhan
           ? AndroidNotificationCategory.alarm
@@ -195,12 +163,12 @@ class PushNotificationService {
       visibility: NotificationVisibility.public,
     );
 
-    // iOS details
+    // ✅ Custom sound for adhan (iOS) — max 30s allowed by iOS
     final iosDetails = DarwinNotificationDetails(
       presentAlert: true,
       presentBadge: true,
       presentSound: playSound,
-      sound: playSound ? 'default' : null,
+      sound: (isAdhan && playSound) ? 'adhan.mp3' : null,
       interruptionLevel:
           isAdhan ? InterruptionLevel.timeSensitive : InterruptionLevel.active,
     );
@@ -224,15 +192,11 @@ class PushNotificationService {
   }
 
   static Future<void> cancel(int id) => _plugin.cancel(id);
-
   static Future<void> cancelAll() => _plugin.cancelAll();
-
-  /// Return IDs of pending notifications (useful for debugging).
   static Future<List<PendingNotificationRequest>> pending() =>
       _plugin.pendingNotificationRequests();
 }
 
-/// Background tap handler (must be top-level).
 @pragma('vm:entry-point')
 void _backgroundHandler(NotificationResponse response) {
   debugPrint('Background notification tap: ${response.payload}');

@@ -107,12 +107,17 @@ class PrayerEngine {
       const Duration(minutes: AppConfig.congregationWindowDuration),
     );
 
+    // ✅ FIX: For Isha, next prayer (Fajr) is TOMORROW.
     final nextPrayer = _nextPrayerAfter(prayer);
-    final nextAdhan = AdhanService.timeFor(nextPrayer, onDate: todayDate);
+    final nextDate = (prayer == PrayerName.isha)
+        ? todayDate.add(const Duration(days: 1))
+        : todayDate;
+    final nextAdhan = AdhanService.timeFor(nextPrayer, onDate: nextDate);
     final individualClose = nextAdhan.subtract(
       const Duration(minutes: AppConfig.individualWindowCloseBuffer),
     );
 
+    // qadaClose = same prayer tomorrow
     final tomorrow = todayDate.add(const Duration(days: 1));
     final tomorrowAdhan = AdhanService.timeFor(prayer, onDate: tomorrow);
 
@@ -140,7 +145,6 @@ class PrayerEngine {
     };
   }
 
-  /// Base hasanat (before streak bonus).
   static int hasanatFor({
     required PrayerName prayer,
     required PrayerStatus status,
@@ -158,12 +162,10 @@ class PrayerEngine {
     }
 
     if (status == PrayerStatus.individual) {
-      // FIX: allow individual during congregation window too (was returning 0)
       if (phase == PrayerPhase.individualOpen ||
           phase == PrayerPhase.congregationOpen) {
         return AppConfig.hasanatPerIndividual;
       }
-      // qada awards 0
       if (phase == PrayerPhase.qadaOpen) return 0;
     }
 
@@ -172,7 +174,6 @@ class PrayerEngine {
     return 0;
   }
 
-  /// Hasanat with streak bonus applied.
   static int hasanatWithBonus({
     required PrayerName prayer,
     required PrayerStatus status,

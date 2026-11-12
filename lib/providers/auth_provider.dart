@@ -29,6 +29,9 @@ class AuthProvider extends ChangeNotifier {
   String get displayName => (_profile?['name'] as String?) ?? 'طالب';
   String? get currentGroupId => _profile?['current_group_id'] as String?;
 
+  /// هل المستخدم الحالي أدمن؟
+  bool get isAdmin => (_profile?['is_admin'] as bool?) == true;
+
   /// Called from main.dart — sets up listener + initial state.
   void init() {
     _repo.authStateChanges.listen((state) {

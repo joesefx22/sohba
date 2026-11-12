@@ -41,13 +41,15 @@ class _AdminLessonsPageState extends State<AdminLessonsPage> {
 
   Future<void> _add() async {
     final titleCtrl = TextEditingController();
-    final urlCtrl = TextEditingController();
+    final videoCtrl = TextEditingController();
+    final audioCtrl = TextEditingController();
     final durationCtrl = TextEditingController(text: '240');
     final transcriptCtrl = TextEditingController();
 
     final ok = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
         title: const Text('درس جديد'),
         content: SingleChildScrollView(
           child: Column(
@@ -57,17 +59,33 @@ class _AdminLessonsPageState extends State<AdminLessonsPage> {
                 controller: titleCtrl,
                 decoration: const InputDecoration(labelText: 'العنوان'),
               ),
+              const SizedBox(height: 8),
               TextField(
-                controller: urlCtrl,
+                controller: videoCtrl,
+                keyboardType: TextInputType.url,
                 decoration: const InputDecoration(
-                    labelText: 'رابط الصوت (mp3)'),
+                  labelText: 'رابط الفيديو (YouTube / Drive / mp4)',
+                  prefixIcon: Icon(Icons.play_circle_outline),
+                ),
               ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: audioCtrl,
+                keyboardType: TextInputType.url,
+                decoration: const InputDecoration(
+                  labelText: 'رابط الصوت (mp3) — اختياري',
+                  prefixIcon: Icon(Icons.headphones),
+                ),
+              ),
+              const SizedBox(height: 8),
               TextField(
                 controller: durationCtrl,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(
-                    labelText: 'المدة بالثواني'),
+                  labelText: 'المدة بالثواني',
+                ),
               ),
+              const SizedBox(height: 8),
               TextField(
                 controller: transcriptCtrl,
                 maxLines: 3,
@@ -78,23 +96,36 @@ class _AdminLessonsPageState extends State<AdminLessonsPage> {
         ),
         actions: [
           TextButton(
-              onPressed: () => Navigator.pop(context, false),
-              child: const Text('إلغاء')),
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
           FilledButton(
-              onPressed: () => Navigator.pop(context, true),
-              child: const Text('نشر')),
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('نشر'),
+          ),
         ],
       ),
     );
 
     if (ok != true) return;
+
+    if (videoCtrl.text.trim().isEmpty && audioCtrl.text.trim().isEmpty) {
+      if (!mounted) return;
+      AppSnackbar.error(context, 'أضف رابط فيديو أو صوت على الأقل');
+      return;
+    }
+
     try {
       await Supabase.instance.client.from('daily_lessons').insert({
         'id': 'l_${DateTime.now().millisecondsSinceEpoch}',
         'title': titleCtrl.text.trim(),
-        'audio_url': urlCtrl.text.trim().isEmpty ? null : urlCtrl.text.trim(),
-        'duration_seconds':
-            int.tryParse(durationCtrl.text.trim()) ?? 240,
+        'video_url': videoCtrl.text.trim().isEmpty
+            ? null
+            : videoCtrl.text.trim(),
+        'audio_url': audioCtrl.text.trim().isEmpty
+            ? null
+            : audioCtrl.text.trim(),
+        'duration_seconds': int.tryParse(durationCtrl.text.trim()) ?? 240,
         'transcript': transcriptCtrl.text.trim().isEmpty
             ? null
             : transcriptCtrl.text.trim(),
@@ -106,6 +137,42 @@ class _AdminLessonsPageState extends State<AdminLessonsPage> {
     } catch (e) {
       if (!mounted) return;
       AppSnackbar.error(context, 'فشل النشر: $e');
+    }
+  }
+
+  Future<void> _delete(Map<String, dynamic> lesson) async {
+    final ok = await showDialog<bool>(
+      context: context,
+      builder: (_) => AlertDialog(
+        backgroundColor: AppColors.surfaceElevated,
+        title: const Text('حذف الدرس؟'),
+        content: Text(lesson['title'] ?? ''),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context, false),
+            child: const Text('إلغاء'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('حذف',
+                style: TextStyle(color: AppColors.error)),
+          ),
+        ],
+      ),
+    );
+    if (ok != true) return;
+
+    try {
+      await Supabase.instance.client
+          .from('daily_lessons')
+          .delete()
+          .eq('id', lesson['id']);
+      await _load();
+      if (!mounted) return;
+      AppSnackbar.success(context, 'تم الحذف');
+    } catch (e) {
+      if (!mounted) return;
+      AppSnackbar.error(context, 'فشل: $e');
     }
   }
 
@@ -130,15 +197,53 @@ class _AdminLessonsPageState extends State<AdminLessonsPage> {
                     icon: Icons.add,
                   ),
                   const SizedBox(height: 16),
-                  ..._lessons.map((l) => GlassContainer(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        padding: const EdgeInsets.all(12),
-                        child: ListTile(
-                          title: Text(l['title'] ?? ''),
-                          subtitle: Text(
-                              '${l['publish_date'] ?? ''} — ${l['duration_seconds'] ?? 0}ث'),
+                  if (_lessons.isEmpty)
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(40),
+                        child: Text(
+                          'لا توجد دروس — ابدأ بإضافة درس جديد',
+                          style: TextStyle(color: AppColors.textSecondary),
                         ),
-                      )),
+                      ),
+                    )
+                  else
+                    ..._lessons.map((l) => GlassContainer(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          padding: const EdgeInsets.all(12),
+                          child: ListTile(
+                            contentPadding: EdgeInsets.zero,
+                            title: Text(
+                              l['title'] ?? '',
+                              style: const TextStyle(
+                                color: AppColors.text,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            subtitle: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text('${l['publish_date'] ?? ''}',
+                                    style: const TextStyle(fontSize: 11)),
+                                if (l['video_url'] != null)
+                                  const Row(children: [
+                                    Icon(Icons.play_circle,
+                                        size: 12, color: AppColors.gold),
+                                    SizedBox(width: 4),
+                                    Text('فيديو',
+                                        style: TextStyle(
+                                            fontSize: 11,
+                                            color: AppColors.gold)),
+                                  ]),
+                              ],
+                            ),
+                            trailing: IconButton(
+                              icon: const Icon(Icons.delete_outline,
+                                  color: AppColors.error),
+                              onPressed: () => _delete(l),
+                            ),
+                          ),
+                        )),
                 ],
               ),
       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 
 import '../config/app_config.dart';
 import '../providers/athkar_provider.dart';
@@ -14,7 +15,9 @@ import '../providers/notification_provider.dart';
 import '../providers/prayer_provider.dart';
 import '../providers/streak_provider.dart';
 import '../providers/title_provider.dart';
+import '../services/adhan_scheduler.dart';
 import '../services/adhan_service.dart';
+import '../services/athkar_seeder.dart';
 import '../services/location_service.dart';
 import '../services/notification_scheduler.dart';
 import '../services/scheduler_service.dart';
@@ -68,6 +71,18 @@ class _SplashPageState extends State<SplashPage> {
 
     final userId = auth.user!.id;
 
+    // ✅ Auto-seed athkar on first run (silent, non-blocking)
+    try {
+      final client = Supabase.instance.client;
+      final isSeeded = await AthkarSeeder.isSeeded(client);
+      if (!isSeeded) {
+        debugPrint('Splash: athkar not seeded — seeding now...');
+        await AthkarSeeder.seed(client);
+      }
+    } catch (e) {
+      debugPrint('Splash: athkar auto-seed failed ($e)');
+    }
+
     try {
       await SchedulerService.runDailyMaintenance(
         userId: userId,
@@ -115,11 +130,15 @@ class _SplashPageState extends State<SplashPage> {
 
     if (!mounted) return;
 
+    // ✅ Init adhan scheduler
+    AdhanScheduler.init().catchError((e) {
+      debugPrint('AdhanScheduler init error: $e');
+    });
+
     NotificationScheduler.rescheduleAll().catchError((e) {
       debugPrint('NotificationScheduler error: $e');
     });
 
-    // ← التوجيه إلى MainShellPage بدل HomePage
     _go(groupProvider.hasGroup
         ? const MainShellPage()
         : const JoinGroupPage());

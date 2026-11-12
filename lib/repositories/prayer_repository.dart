@@ -117,8 +117,10 @@ class PrayerRepository {
         .toList();
   }
 
-  /// كل الصلوات اللي محتاجة متابعة (missed غير متوب عنها + qada متوب عنها)
-  /// من تاريخ معين وحتى أمس.
+  /// يُرجع فقط الصلوات اللي محتاجة فعل من المستخدم:
+  /// - missed ولسه ما اتُبش عنها → تظهر
+  /// - missed واتُب منها → تختفي
+  /// - qada (اتقضت) → تختفي (خلصت)
   Future<List<PrayerLog>> getMissedAndQadaHistory({
     required String userId,
     int daysBack = 90,
@@ -130,7 +132,8 @@ class PrayerRepository {
         .from('prayer_logs')
         .select()
         .eq('user_id', userId)
-        .inFilter('status', ['missed', 'qada'])
+        .eq('status', 'missed')
+        .eq('sayyiat_repented', false)
         .gte('date', _dateOnly(from))
         .lt('date', _dateOnly(today))
         .order('date', ascending: false);

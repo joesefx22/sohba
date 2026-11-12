@@ -2,6 +2,7 @@ class DailyLesson {
   final String id;
   final String title;
   final String? audioUrl;
+  final String? videoUrl;
   final int? durationSeconds;
   final String? transcript;
   final String? sourceId;
@@ -11,6 +12,7 @@ class DailyLesson {
     required this.id,
     required this.title,
     this.audioUrl,
+    this.videoUrl,
     this.durationSeconds,
     this.transcript,
     this.sourceId,
@@ -27,6 +29,7 @@ class DailyLesson {
         id: j['id'] as String,
         title: j['title'] as String,
         audioUrl: j['audio_url'] as String?,
+        videoUrl: j['video_url'] as String?,
         durationSeconds: j['duration_seconds'] as int?,
         transcript: j['transcript'] as String?,
         sourceId: j['source_id'] as String?,
