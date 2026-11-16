@@ -7,11 +7,10 @@ import '../../repositories/qiyam_repository.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
 import '../../widgets/error_state.dart';
-import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
+import '../../widgets/ribbon_card.dart';
 
 class QiyamPage extends StatefulWidget {
-  /// When `true`, the page renders as an embedded tab (no AppBar).
   final bool embedded;
 
   const QiyamPage({super.key, this.embedded = false});
@@ -90,7 +89,7 @@ class _QiyamPageState extends State<QiyamPage> {
   Widget build(BuildContext context) {
     final content = _loading
         ? const Center(
-            child: CircularProgressIndicator(color: AppColors.mint),
+            child: CircularProgressIndicator(color: AppColors.goldBright),
           )
         : _buildContent();
 
@@ -113,35 +112,57 @@ class _QiyamPageState extends State<QiyamPage> {
 
   Widget _buildContent() {
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
       children: [
-        GlassContainer(
-          padding: const EdgeInsets.all(16),
+        RibbonCard(
+          accent: AppColors.iman,
+          radius: 24,
+          padding: const EdgeInsets.all(18),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text('تسجيل اليوم',
-                  style: AppText.section.copyWith(fontSize: 18)),
+              Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: AppColors.iman.withValues(alpha: .16),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.nightlight_round,
+                        color: AppColors.iman, size: 22),
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'تسجيل اليوم',
+                    style: TextStyle(
+                      color: AppColors.text,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ],
+              ),
               const SizedBox(height: 8),
-              SwitchListTile(
-                title: const Text('صليت الشفع'),
+              _switchTile(
+                title: 'صليت الشفع',
                 value: _shaf,
                 onChanged: (v) => setState(() => _shaf = v),
-                activeThumbColor: AppColors.emerald,
               ),
-              SwitchListTile(
-                title: const Text('صليت الوتر'),
+              _switchTile(
+                title: 'صليت الوتر',
                 value: _witr,
                 onChanged: (v) => setState(() => _witr = v),
-                activeThumbColor: AppColors.emerald,
               ),
-              SwitchListTile(
-                title: const Text('صليت الضحى'),
+              _switchTile(
+                title: 'صليت الضحى',
                 value: _duha,
                 onChanged: (v) => setState(() => _duha = v),
-                activeThumbColor: AppColors.emerald,
               ),
-              const Divider(height: 24),
+              const SizedBox(height: 8),
+              Divider(color: AppColors.gold.withValues(alpha: .22)),
+              const SizedBox(height: 8),
               _counter(
                 'ركعات السنة',
                 _sunnahRakat,
@@ -164,17 +185,57 @@ class _QiyamPageState extends State<QiyamPage> {
           ),
         ),
         const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: _saving ? null : _save,
-          icon: const Icon(Icons.check),
-          label: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ'),
-          style: FilledButton.styleFrom(
-            backgroundColor: AppColors.emerald,
-            foregroundColor: Colors.white,
-            minimumSize: const Size.fromHeight(52),
+        SizedBox(
+          height: 52,
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _saving ? null : _save,
+            icon: const Icon(Icons.check),
+            label: Text(_saving ? 'جارٍ الحفظ...' : 'حفظ'),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.emerald,
+              foregroundColor: AppColors.background,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(16),
+              ),
+              textStyle: const TextStyle(
+                fontSize: 15,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ),
       ],
+    );
+  }
+
+  Widget _switchTile({
+    required String title,
+    required bool value,
+    required ValueChanged<bool> onChanged,
+  }) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 2),
+      child: Row(
+        children: [
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
+          ),
+          Switch(
+            value: value,
+            onChanged: onChanged,
+            activeThumbColor: AppColors.goldBright,
+            activeTrackColor: AppColors.gold.withValues(alpha: .4),
+          ),
+        ],
+      ),
     );
   }
 
@@ -189,17 +250,36 @@ class _QiyamPageState extends State<QiyamPage> {
       child: Row(
         children: [
           Expanded(
-            child: Text(label,
-                style: AppText.body.copyWith(fontSize: 14)),
+            child: Text(
+              label,
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 14,
+                fontWeight: FontWeight.w500,
+              ),
+            ),
           ),
           IconButton(
             onPressed: value > 0 ? () => onChange(value - 1) : null,
             icon: const Icon(Icons.remove),
+            color: AppColors.goldBright,
           ),
-          Text('$value', style: AppText.numberSmall),
+          SizedBox(
+            width: 32,
+            child: Text(
+              '$value',
+              textAlign: TextAlign.center,
+              style: const TextStyle(
+                color: AppColors.goldBright,
+                fontSize: 17,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
           IconButton(
             onPressed: value < max ? () => onChange(value + 1) : null,
             icon: const Icon(Icons.add),
+            color: AppColors.goldBright,
           ),
         ],
       ),

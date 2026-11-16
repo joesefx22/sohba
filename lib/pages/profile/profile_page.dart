@@ -7,8 +7,8 @@ import '../../providers/streak_provider.dart';
 import '../../providers/badge_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
-import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
+import '../../widgets/ribbon_card.dart';
 import '../admin/admin_dashboard_page.dart';
 import '../admin/admin_lessons_page.dart';
 import '../admin/seed_athkar_page.dart';
@@ -19,7 +19,6 @@ import '../qiyam/qiyam_page.dart';
 import '../leaderboard/leaderboard_page.dart';
 
 class ProfilePage extends StatelessWidget {
-  /// Pass `true` when rendered inside a tab (no `GlassScaffold` wrapper).
   final bool embedded;
 
   const ProfilePage({super.key, this.embedded = false});
@@ -34,81 +33,30 @@ class ProfilePage extends StatelessWidget {
     final profile = auth.profile ?? {};
     final iman = ((profile['iman'] ?? 0) as num).toDouble();
     final hasanat = (profile['total_hasanat'] ?? 0) as int;
+    final avatarUrl = profile['avatar_url'] as String?;
+    final initial = auth.displayName.isNotEmpty
+        ? auth.displayName.characters.first
+        : 'ص';
 
     final body = SafeArea(
       child: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          Center(
-            child: Column(
-              children: [
-                CircleAvatar(
-                  radius: 48,
-                  backgroundColor: AppColors.mint.withAlpha(80),
-                  child: Text(
-                    auth.displayName.characters.first,
-                    style: const TextStyle(
-                      fontSize: 44,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  auth.displayName,
-                  style: AppText.section.copyWith(fontSize: 22),
-                ),
-                if (group.group != null)
-                  Text(
-                    group.group!['name'] ?? '',
-                    style: const TextStyle(
-                      color: AppColors.gold,
-                      fontSize: 13,
-                    ),
-                  ),
-              ],
-            ),
+          // ── Hero ──
+          _ProfileHero(
+            name: auth.displayName,
+            groupName: group.group?['name'] as String?,
+            avatarUrl: avatarUrl,
+            initial: initial,
+            iman: iman,
+            hasanat: hasanat,
+            streak: streak.currentStreak,
+            unlockedBadges: badges.unlockedCount,
+            totalBadges: badges.totalCount,
           ),
           const SizedBox(height: 24),
 
-          Row(
-            children: [
-              Expanded(
-                child: _statCard(
-                  'إيمان',
-                  iman.toStringAsFixed(1),
-                  AppColors.gold,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _statCard('حسنات', '$hasanat', AppColors.mint),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _statCard(
-                  'مواصلة',
-                  '${streak.currentStreak}',
-                  Colors.orange,
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _statCard(
-                  'ميداليات',
-                  '${badges.unlockedCount}/${badges.totalCount}',
-                  AppColors.rarityEpic,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 24),
-
+          // ── Menu items ──
           _item(Icons.settings, 'الإعدادات', AppColors.mint, () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SettingsPage()),
@@ -129,16 +77,35 @@ class ProfilePage extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const LedgerPage()),
             );
           }),
-          _item(Icons.nights_stay, 'القيام والسنن', AppColors.rarityEpic, () {
+          _item(Icons.nights_stay, 'القيام والسنن', AppColors.iman, () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const QiyamPage()),
             );
           }),
 
-          // ✅ يظهر للأدمن فقط
+          // ── Admin only ──
           if (auth.isAdmin) ...[
-            _item(Icons.admin_panel_settings, 'لوحة الإدارة', AppColors.gold,
-                () {
+            const SizedBox(height: 8),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4),
+              child: Row(
+                children: [
+                  const Icon(Icons.shield_rounded,
+                      color: AppColors.goldBright, size: 16),
+                  const SizedBox(width: 6),
+                  Text(
+                    'أدوات الإدارة',
+                    style: AppText.caption.copyWith(
+                      color: AppColors.goldBright,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: 0.6,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(height: 8),
+            _item(Icons.admin_panel_settings, 'لوحة الإدارة', AppColors.gold, () {
               Navigator.of(context).push(
                 MaterialPageRoute(
                     builder: (_) => const AdminDashboardPage()),
@@ -150,8 +117,7 @@ class ProfilePage extends StatelessWidget {
                     builder: (_) => const AdminLessonsPage()),
               );
             }),
-            _item(Icons.cloud_upload, 'رفع الأذكار (أدمن)',
-                AppColors.rarityEpic, () {
+            _item(Icons.cloud_upload, 'رفع الأذكار (أدمن)', AppColors.iman, () {
               Navigator.of(context).push(
                 MaterialPageRoute(
                     builder: (_) => const SeedAthkarPage()),
@@ -159,11 +125,12 @@ class ProfilePage extends StatelessWidget {
             }),
           ],
 
+          const SizedBox(height: 8),
           _item(Icons.logout, 'تسجيل الخروج', AppColors.error, () async {
             final confirm = await showDialog<bool>(
               context: context,
               builder: (_) => AlertDialog(
-                backgroundColor: AppColors.surface,
+                backgroundColor: AppColors.surfaceElevated,
                 title: const Text('تسجيل الخروج؟',
                     style: TextStyle(color: AppColors.text)),
                 actions: [
@@ -196,12 +163,6 @@ class ProfilePage extends StatelessWidget {
     if (embedded) {
       return Scaffold(
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text('حسابي'),
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          scrolledUnderElevation: 0,
-        ),
         body: body,
       );
     }
@@ -216,33 +177,206 @@ class ProfilePage extends StatelessWidget {
     );
   }
 
-  Widget _statCard(String label, String value, Color color) {
-    return GlassContainer(
-      padding: const EdgeInsets.all(16),
+  Widget _item(IconData icon, String title, Color color, VoidCallback onTap) {
+    return RibbonCard(
+      accent: color,
+      radius: 18,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.zero,
+      onTap: onTap,
+      child: ListTile(
+        leading: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: .16),
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: color.withValues(alpha: .4)),
+          ),
+          child: Icon(icon, color: color, size: 20),
+        ),
+        title: Text(
+          title,
+          style: const TextStyle(
+            color: AppColors.text,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+        ),
+        trailing:
+            const Icon(Icons.chevron_left, color: AppColors.textSecondary),
+      ),
+    );
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+
+class _ProfileHero extends StatelessWidget {
+  const _ProfileHero({
+    required this.name,
+    required this.groupName,
+    required this.avatarUrl,
+    required this.initial,
+    required this.iman,
+    required this.hasanat,
+    required this.streak,
+    required this.unlockedBadges,
+    required this.totalBadges,
+  });
+
+  final String name;
+  final String? groupName;
+  final String? avatarUrl;
+  final String initial;
+  final double iman;
+  final int hasanat;
+  final int streak;
+  final int unlockedBadges;
+  final int totalBadges;
+
+  @override
+  Widget build(BuildContext context) {
+    return RibbonCard(
+      accent: AppColors.gold,
+      radius: 28,
+      padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
       child: Column(
         children: [
-          Text(
-            value,
-            style: AppText.numberSmall.copyWith(color: color),
+          Container(
+            width: 96,
+            height: 96,
+            padding: const EdgeInsets.all(3),
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              gradient: AppColors.goldGradient,
+              boxShadow: [
+                BoxShadow(
+                  color: AppColors.gold.withValues(alpha: .45),
+                  blurRadius: 22,
+                ),
+              ],
+            ),
+            child: CircleAvatar(
+              backgroundColor: AppColors.background,
+              backgroundImage:
+                  avatarUrl != null && avatarUrl!.isNotEmpty
+                      ? NetworkImage(avatarUrl!)
+                      : null,
+              child: avatarUrl == null || avatarUrl!.isEmpty
+                  ? Text(
+                      initial,
+                      style: const TextStyle(
+                        color: AppColors.text,
+                        fontSize: 40,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    )
+                  : null,
+            ),
           ),
-          const SizedBox(height: 4),
-          Text(label, style: AppText.caption),
+          const SizedBox(height: 14),
+          Text(
+            name,
+            textAlign: TextAlign.center,
+            style: const TextStyle(
+              color: AppColors.text,
+              fontSize: 24,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          if (groupName != null && groupName!.isNotEmpty) ...[
+            const SizedBox(height: 4),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Container(width: 20, height: 1, color: AppColors.gold),
+                const SizedBox(width: 8),
+                Text(
+                  groupName!,
+                  style: const TextStyle(
+                    color: AppColors.goldBright,
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Container(width: 20, height: 1, color: AppColors.gold),
+              ],
+            ),
+          ],
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: _stat(
+                  Icons.stars_rounded,
+                  iman.toStringAsFixed(1),
+                  'إيمان',
+                  AppColors.goldBright,
+                ),
+              ),
+              _divider(),
+              Expanded(
+                child: _stat(
+                  Icons.eco_rounded,
+                  '$hasanat',
+                  'حسنات',
+                  AppColors.emerald,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 14),
+          Row(
+            children: [
+              Expanded(
+                child: _stat(
+                  Icons.local_fire_department_rounded,
+                  '$streak',
+                  'مواصلة',
+                  AppColors.streak,
+                ),
+              ),
+              _divider(),
+              Expanded(
+                child: _stat(
+                  Icons.emoji_events_rounded,
+                  '$unlockedBadges/$totalBadges',
+                  'ميداليات',
+                  AppColors.iman,
+                ),
+              ),
+            ],
+          ),
         ],
       ),
     );
   }
 
-  Widget _item(IconData icon, String title, Color color, VoidCallback onTap) {
-    return GlassContainer(
-      margin: const EdgeInsets.only(bottom: 8),
-      child: ListTile(
-        leading: Icon(icon, color: color),
-        title: Text(
-          title,
-          style: TextStyle(color: color, fontWeight: FontWeight.w500),
+  Widget _stat(IconData icon, String value, String label, Color color) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 22),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            color: color,
+            fontSize: 20,
+            fontWeight: FontWeight.w800,
+            height: 1.15,
+          ),
         ),
-        onTap: onTap,
-      ),
+        const SizedBox(height: 2),
+        Text(label, style: AppText.caption.copyWith(fontSize: 11)),
+      ],
     );
   }
+
+  Widget _divider() => Container(
+        width: 1,
+        height: 48,
+        color: AppColors.gold.withValues(alpha: .22),
+      );
 }

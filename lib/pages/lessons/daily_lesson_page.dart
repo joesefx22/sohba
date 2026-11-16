@@ -6,8 +6,8 @@ import '../../providers/auth_provider.dart';
 import '../../providers/daily_lesson_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
-import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
+import '../../widgets/ribbon_card.dart';
 
 class DailyLessonPage extends StatelessWidget {
   const DailyLessonPage({super.key});
@@ -31,7 +31,7 @@ class DailyLessonPage extends StatelessWidget {
     if (p.loading) {
       return const GlassScaffold(
         body: Center(
-          child: CircularProgressIndicator(color: AppColors.mint),
+          child: CircularProgressIndicator(color: AppColors.goldBright),
         ),
       );
     }
@@ -57,26 +57,36 @@ class DailyLessonPage extends StatelessWidget {
       ),
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
           children: [
-            GlassContainer(
+            RibbonCard(
+              accent: AppColors.iman,
+              radius: 24,
               padding: const EdgeInsets.all(20),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     children: [
-                      Icon(
-                        hasVideo
-                            ? Icons.play_circle_outline
-                            : Icons.headphones,
-                        color: AppColors.goldBright,
-                        size: 24,
+                      Container(
+                        width: 40,
+                        height: 40,
+                        decoration: BoxDecoration(
+                          color: AppColors.iman.withValues(alpha: .18),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: Icon(
+                          hasVideo
+                              ? Icons.play_circle_outline
+                              : Icons.headphones,
+                          color: AppColors.iman,
+                          size: 22,
+                        ),
                       ),
-                      const SizedBox(width: 8),
+                      const SizedBox(width: 10),
                       Text(
                         hasVideo ? 'فيديو' : lesson.durationLabel,
-                        style: AppText.caption,
+                        style: AppText.caption.copyWith(fontSize: 12),
                       ),
                       const Spacer(),
                       if (p.listened)
@@ -85,35 +95,48 @@ class DailyLessonPage extends StatelessWidget {
                               color: AppColors.mint, size: 18),
                           SizedBox(width: 4),
                           Text('تم',
-                              style: TextStyle(color: AppColors.mint)),
+                              style: TextStyle(
+                                color: AppColors.mint,
+                                fontWeight: FontWeight.w600,
+                              )),
                         ]),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Text(
                     lesson.title,
-                    style: AppText.section.copyWith(fontSize: 22),
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      height: 1.3,
+                    ),
                   ),
 
-                  // 🎥 Video button
                   if (hasVideo) ...[
                     const SizedBox(height: 20),
                     SizedBox(
                       width: double.infinity,
                       child: FilledButton.icon(
                         onPressed: () => _openVideo(context, lesson.videoUrl!),
-                        icon: const Icon(Icons.play_arrow, size: 28),
+                        icon: const Icon(Icons.play_arrow, size: 26),
                         label: const Text('شاهد الفيديو'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.gold,
                           foregroundColor: AppColors.background,
                           padding: const EdgeInsets.symmetric(vertical: 16),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
                   ],
 
-                  // 🎧 Audio button
                   if ((lesson.audioUrl ?? '').isNotEmpty) ...[
                     const SizedBox(height: 10),
                     SizedBox(
@@ -124,10 +147,14 @@ class DailyLessonPage extends StatelessWidget {
                         icon: const Icon(Icons.headphones),
                         label: const Text('استمع للصوت'),
                         style: OutlinedButton.styleFrom(
-                          foregroundColor: AppColors.mint,
+                          foregroundColor: AppColors.goldBright,
                           side: BorderSide(
-                              color: AppColors.emerald.withAlpha(120)),
+                            color: AppColors.gold.withValues(alpha: .6),
+                          ),
                           padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
                         ),
                       ),
                     ),
@@ -136,9 +163,19 @@ class DailyLessonPage extends StatelessWidget {
                   if (lesson.transcript != null &&
                       lesson.transcript!.isNotEmpty) ...[
                     const SizedBox(height: 20),
-                    Text(
-                      lesson.transcript!,
-                      style: AppText.body.copyWith(height: 1.7),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withValues(alpha: .18),
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        lesson.transcript!,
+                        style: AppText.body.copyWith(
+                          fontSize: 14,
+                          height: 1.8,
+                        ),
+                      ),
                     ),
                   ],
 
@@ -152,8 +189,15 @@ class DailyLessonPage extends StatelessWidget {
                         label: const Text('تم الاستماع'),
                         style: FilledButton.styleFrom(
                           backgroundColor: AppColors.emerald,
-                          foregroundColor: Colors.white,
+                          foregroundColor: AppColors.background,
                           padding: const EdgeInsets.symmetric(vertical: 14),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          textStyle: const TextStyle(
+                            fontSize: 15,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),

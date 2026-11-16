@@ -57,6 +57,9 @@ dev_dependencies:
   flutter_launcher_icons: ^0.14.1
   flutter_native_splash: ^2.4.1
 
+# ============================================
+# FLUTTER BLOCK
+# ============================================
 flutter:
   uses-material-design: true
   assets:
@@ -64,6 +67,8 @@ flutter:
     - assets/athkar/
     - assets/icon/
     - assets/audio/
+    - assets/images/sohba/           # hero_mosque.png + أي صورة تانية
+    - assets/images/sohba/prayers/   # fajr.jpg / dhuhr.jpg / ...
 
 # ============================================
 # LAUNCHER ICON
@@ -86,3 +91,19 @@ flutter_launcher_icons:
   macos:
     generate: true
     image_path: "assets/icon/icon.png"
+
+# ============================================
+# NATIVE SPLASH  ← كان ناقص، اتضاف
+# ============================================
+flutter_native_splash:
+  color: "#071612"                      # نفس background_color بتاع الأيقونة
+  image: assets/icon/icon.png
+  color_dark: "#071612"
+  image_dark: assets/icon/icon.png
+  android: true
+  ios: true
+  web: false
+  android_12:
+    image: assets/icon/icon.png
+    icon_background_color: "#071612"
+    color: "#071612"

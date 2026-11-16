@@ -23,18 +23,36 @@ class _MainShellPageState extends State<MainShellPage> {
   int _tab = 0;
 
   static const _tabs = [
-    _TabSpec(icon: Icons.home_outlined, activeIcon: Icons.home, label: 'الرئيسية'),
-    _TabSpec(icon: Icons.mosque_outlined, activeIcon: Icons.mosque, label: 'العبادات'),
-    _TabSpec(icon: Icons.emoji_events_outlined, activeIcon: Icons.emoji_events, label: 'إنجازاتي'),
-    _TabSpec(icon: Icons.menu_book_outlined, activeIcon: Icons.menu_book, label: 'المحتوى'),
-    _TabSpec(icon: Icons.person_outline, activeIcon: Icons.person, label: 'حسابي'),
+    _TabSpec(
+      icon: Icons.home_outlined,
+      activeIcon: Icons.home_rounded,
+      label: 'الرئيسية',
+    ),
+    _TabSpec(
+      icon: Icons.mosque_outlined,
+      activeIcon: Icons.mosque_rounded,
+      label: 'العبادات',
+    ),
+    _TabSpec(
+      icon: Icons.emoji_events_outlined,
+      activeIcon: Icons.emoji_events_rounded,
+      label: 'إنجازاتي',
+    ),
+    _TabSpec(
+      icon: Icons.menu_book_outlined,
+      activeIcon: Icons.menu_book_rounded,
+      label: 'المحتوى',
+    ),
+    _TabSpec(
+      icon: Icons.person_outline_rounded,
+      activeIcon: Icons.person_rounded,
+      label: 'حسابي',
+    ),
   ];
 
   @override
   Widget build(BuildContext context) {
     final lock = context.watch<LockProvider>();
-
-    // قفل الحساب يمنع أي تنقل
     if (lock.isLocked) return const LockScreen();
 
     return GlassScaffold(
@@ -55,65 +73,95 @@ class _MainShellPageState extends State<MainShellPage> {
   Widget _buildNav() {
     return Container(
       decoration: BoxDecoration(
-        color: AppColors.backgroundSecondary.withAlpha(240),
-        border: Border(top: BorderSide(color: Colors.white.withAlpha(13))),
+        color: AppColors.background.withValues(alpha: .96),
+        border: Border(
+          top: BorderSide(color: AppColors.gold.withValues(alpha: .18)),
+        ),
+        boxShadow: const [
+          BoxShadow(
+            color: Color(0x88030716),
+            blurRadius: 22,
+            offset: Offset(0, -7),
+          ),
+        ],
       ),
       child: SafeArea(
         top: false,
         child: Padding(
-          padding: const EdgeInsets.symmetric(vertical: 6),
+          padding: const EdgeInsets.fromLTRB(8, 8, 8, 5),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: List.generate(_tabs.length, (i) => _navItem(i)),
+            children: List.generate(_tabs.length, _navItem),
           ),
         ),
       ),
     );
   }
 
-  Widget _navItem(int idx) {
-    final spec = _tabs[idx];
-    final selected = _tab == idx;
-    final color = selected ? AppColors.mint : AppColors.textSecondary;
+  Widget _navItem(int index) {
+    final tab = _tabs[index];
+    final selected = _tab == index;
+    final color = selected ? AppColors.goldBright : AppColors.textSecondary;
 
-    return GestureDetector(
-      onTap: () => setState(() => _tab = idx),
-      behavior: HitTestBehavior.opaque,
-      child: SizedBox(
-        width: 68,
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              curve: Curves.easeOutCubic,
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
-              decoration: BoxDecoration(
-                color: selected
-                    ? AppColors.emerald.withAlpha(36)
-                    : Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                            color: AppColors.emerald.withAlpha(50),
-                            blurRadius: 14)
-                      ]
-                    : const [],
-              ),
-              child: Icon(selected ? spec.activeIcon : spec.icon,
-                  size: 22, color: color),
+    return Expanded(
+      child: GestureDetector(
+        onTap: () => setState(() => _tab = index),
+        behavior: HitTestBehavior.opaque,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 260),
+          curve: Curves.easeOutCubic,
+          margin: const EdgeInsets.symmetric(horizontal: 3),
+          padding: const EdgeInsets.symmetric(vertical: 7),
+          decoration: BoxDecoration(
+            gradient: selected
+                ? LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      AppColors.gold.withValues(alpha: .22),
+                      AppColors.gold.withValues(alpha: .045),
+                    ],
+                  )
+                : null,
+            borderRadius: BorderRadius.circular(19),
+            border: Border.all(
+              color: selected
+                  ? AppColors.gold.withValues(alpha: .72)
+                  : Colors.transparent,
             ),
-            const SizedBox(height: 3),
-            Text(
-              spec.label,
-              style: AppText.caption.copyWith(
-                fontSize: 10,
-                color: color,
-                fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
+            boxShadow: selected
+                ? [
+                    BoxShadow(
+                      color: AppColors.gold.withValues(alpha: .18),
+                      blurRadius: 17,
+                    ),
+                  ]
+                : const [],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedSwitcher(
+                duration: const Duration(milliseconds: 180),
+                child: Icon(
+                  selected ? tab.activeIcon : tab.icon,
+                  key: ValueKey('$index-$selected'),
+                  size: 24,
+                  color: color,
+                ),
               ),
-            ),
-          ],
+              const SizedBox(height: 4),
+              Text(
+                tab.label,
+                maxLines: 1,
+                style: AppText.caption.copyWith(
+                  color: color,
+                  fontSize: 10.5,
+                  fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
@@ -121,12 +169,13 @@ class _MainShellPageState extends State<MainShellPage> {
 }
 
 class _TabSpec {
-  final IconData icon;
-  final IconData activeIcon;
-  final String label;
   const _TabSpec({
     required this.icon,
     required this.activeIcon,
     required this.label,
   });
+
+  final IconData icon;
+  final IconData activeIcon;
+  final String label;
 }

@@ -7,7 +7,7 @@ import '../../providers/athkar_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
 import '../../widgets/app_button.dart';
-import '../../widgets/glass_container.dart';
+import '../../widgets/ribbon_card.dart';
 import 'athkar_detail_page.dart';
 
 class AthkarPage extends StatefulWidget {
@@ -33,10 +33,26 @@ class _AthkarPageState extends State<AthkarPage> {
     }
   }
 
+  Color _colorFor(String catId) {
+    switch (catId) {
+      case 'morning':
+        return AppColors.gold;
+      case 'evening':
+        return AppColors.iman;
+      case 'after_prayer':
+        return AppColors.emerald;
+      case 'sleep':
+        return AppColors.rarityEpic;
+      case 'waking':
+        return AppColors.mint;
+      default:
+        return AppColors.mint;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<AthkarProvider>();
-
     return Scaffold(
       backgroundColor: Colors.transparent,
       body: SafeArea(child: _buildBody(provider)),
@@ -47,7 +63,7 @@ class _AthkarPageState extends State<AthkarPage> {
     switch (provider.state) {
       case AthkarState.loading:
         return const Center(
-          child: CircularProgressIndicator(color: AppColors.mint),
+          child: CircularProgressIndicator(color: AppColors.goldBright),
         );
 
       case AthkarState.error:
@@ -86,7 +102,7 @@ class _AthkarPageState extends State<AthkarPage> {
 
       case AthkarState.ready:
         return ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
             Text('الأذكار', style: AppText.heading),
             const SizedBox(height: 4),
@@ -108,8 +124,13 @@ class _AthkarPageState extends State<AthkarPage> {
     final done = provider.completedCountIn(cat);
     final total = cat.totalCount;
     final progress = total > 0 ? done / total : 0.0;
+    final accent = _colorFor(cat.id);
 
-    return GestureDetector(
+    return RibbonCard(
+      accent: accent,
+      radius: 22,
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.all(16),
       onTap: () {
         Navigator.of(context).push(
           MaterialPageRoute(
@@ -117,65 +138,75 @@ class _AthkarPageState extends State<AthkarPage> {
           ),
         );
       },
-      child: GlassContainer(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: [
-            Container(
-              width: 52,
-              height: 52,
-              decoration: BoxDecoration(
-                color: AppColors.mint.withAlpha(45),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Icon(_iconFor(cat.icon),
-                  color: AppColors.mint, size: 26),
+      child: Row(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: .16),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: accent.withValues(alpha: .42)),
             ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(cat.nameAr, style: AppText.subtitle),
-                      const SizedBox(width: 6),
-                      if (cat.isMandatory)
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 6, vertical: 2),
-                          decoration: BoxDecoration(
-                            color: AppColors.gold.withAlpha(50),
-                            borderRadius: BorderRadius.circular(6),
-                          ),
-                          child: const Text('يومي',
-                              style: TextStyle(
-                                  fontSize: 9,
-                                  color: AppColors.gold,
-                                  fontWeight: FontWeight.bold)),
+            child: Icon(_iconFor(cat.icon), color: accent, size: 26),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        cat.nameAr,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(
+                          color: AppColors.text,
+                          fontSize: 16,
+                          fontWeight: FontWeight.w700,
                         ),
-                    ],
-                  ),
-                  const SizedBox(height: 6),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(4),
-                    child: LinearProgressIndicator(
-                      value: progress,
-                      minHeight: 6,
-                      backgroundColor: Colors.white.withAlpha(26),
-                      valueColor:
-                          const AlwaysStoppedAnimation(AppColors.mint),
+                      ),
                     ),
+                    const SizedBox(width: 6),
+                    if (cat.isMandatory)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: .22),
+                          borderRadius: BorderRadius.circular(6),
+                          border: Border.all(
+                            color: AppColors.gold.withValues(alpha: .5),
+                          ),
+                        ),
+                        child: const Text('يومي',
+                            style: TextStyle(
+                                fontSize: 9,
+                                color: AppColors.goldBright,
+                                fontWeight: FontWeight.bold)),
+                      ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(20),
+                  child: LinearProgressIndicator(
+                    value: progress,
+                    minHeight: 6,
+                    backgroundColor: Colors.white.withValues(alpha: .10),
+                    valueColor: AlwaysStoppedAnimation(accent),
                   ),
-                  const SizedBox(height: 4),
-                  Text('$done / $total', style: AppText.caption),
-                ],
-              ),
+                ),
+                const SizedBox(height: 6),
+                Text('$done / $total',
+                    style: AppText.caption.copyWith(fontSize: 11)),
+              ],
             ),
-            const Icon(Icons.chevron_left, color: AppColors.textSecondary),
-          ],
-        ),
+          ),
+          const SizedBox(width: 6),
+          const Icon(Icons.chevron_left, color: AppColors.textSecondary),
+        ],
       ),
     );
   }

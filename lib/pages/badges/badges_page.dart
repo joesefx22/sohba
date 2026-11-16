@@ -5,6 +5,7 @@ import '../../models/badge.dart';
 import '../../providers/badge_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
+import '../../widgets/ribbon_card.dart';
 
 class BadgesPage extends StatelessWidget {
   const BadgesPage({super.key});
@@ -17,26 +18,71 @@ class BadgesPage extends StatelessWidget {
       backgroundColor: Colors.transparent,
       body: SafeArea(
         child: ListView(
-          padding: const EdgeInsets.all(16),
+          padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
           children: [
-            Text('الميداليات', style: AppText.heading),
-            const SizedBox(height: 4),
-            Text(
-              '${provider.unlockedCount} / ${provider.totalCount} مفتوحة',
-              style: AppText.caption,
-            ),
-            const SizedBox(height: 12),
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: provider.completionPercent,
-                minHeight: 10,
-                backgroundColor: Colors.white.withAlpha(26),
-                valueColor:
-                    const AlwaysStoppedAnimation(AppColors.goldBright),
+            // ── Header card ──
+            RibbonCard(
+              accent: AppColors.gold,
+              radius: 24,
+              padding: const EdgeInsets.all(18),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        width: 44,
+                        height: 44,
+                        decoration: BoxDecoration(
+                          color: AppColors.gold.withValues(alpha: .16),
+                          borderRadius: BorderRadius.circular(14),
+                          border: Border.all(
+                            color: AppColors.gold.withValues(alpha: .4),
+                          ),
+                        ),
+                        child: const Icon(Icons.emoji_events_rounded,
+                            color: AppColors.goldBright, size: 24),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              'الميداليات',
+                              style: TextStyle(
+                                color: AppColors.text,
+                                fontSize: 22,
+                                fontWeight: FontWeight.w800,
+                              ),
+                            ),
+                            Text(
+                              '${provider.unlockedCount} / ${provider.totalCount} مفتوحة',
+                              style: AppText.caption.copyWith(fontSize: 12),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 14),
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(20),
+                    child: LinearProgressIndicator(
+                      value: provider.completionPercent,
+                      minHeight: 10,
+                      backgroundColor: Colors.white.withValues(alpha: .10),
+                      valueColor: const AlwaysStoppedAnimation(
+                        AppColors.goldBright,
+                      ),
+                    ),
+                  ),
+                ],
               ),
             ),
-            const SizedBox(height: 24),
+            const SizedBox(height: 20),
+
+            // ── Categories ──
             ...BadgeCategory.values.map((cat) {
               final list = provider.byCategory(cat);
               if (list.isEmpty) return const SizedBox.shrink();
@@ -44,10 +90,28 @@ class BadgesPage extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Padding(
-                    padding: const EdgeInsets.only(bottom: 8),
-                    child: Text(
-                      cat.labelAr,
-                      style: AppText.section,
+                    padding: const EdgeInsets.only(bottom: 10, right: 4),
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 4,
+                          height: 14,
+                          decoration: BoxDecoration(
+                            gradient: AppColors.goldGradient,
+                            borderRadius: BorderRadius.circular(2),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          cat.labelAr,
+                          style: const TextStyle(
+                            color: AppColors.goldBright,
+                            fontSize: 14,
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                   GridView.builder(
@@ -95,8 +159,8 @@ class _BadgeTile extends StatelessWidget {
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: unlocked
-                  ? color.withAlpha(50)
-                  : Colors.black.withAlpha(60),
+                  ? color.withValues(alpha: .22)
+                  : Colors.black.withValues(alpha: .35),
               border: Border.all(
                 color: unlocked ? color : Colors.grey.shade800,
                 width: 2,
@@ -104,8 +168,8 @@ class _BadgeTile extends StatelessWidget {
               boxShadow: unlocked
                   ? [
                       BoxShadow(
-                        color: color.withAlpha(90),
-                        blurRadius: 12,
+                        color: color.withValues(alpha: .45),
+                        blurRadius: 14,
                       )
                     ]
                   : null,
@@ -136,9 +200,9 @@ class _BadgeTile extends StatelessWidget {
   void _show(BuildContext context) {
     showModalBottomSheet(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surfaceElevated,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (_) => Padding(
         padding: const EdgeInsets.all(24),
@@ -150,8 +214,16 @@ class _BadgeTile extends StatelessWidget {
               height: 100,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: badge.tier.color.withAlpha(50),
+                color: badge.tier.color.withValues(alpha: .22),
                 border: Border.all(color: badge.tier.color, width: 3),
+                boxShadow: unlocked
+                    ? [
+                        BoxShadow(
+                          color: badge.tier.color.withValues(alpha: .5),
+                          blurRadius: 22,
+                        ),
+                      ]
+                    : null,
               ),
               child: Icon(
                 unlocked ? badge.iconData : Icons.help_outline,
@@ -162,7 +234,11 @@ class _BadgeTile extends StatelessWidget {
             const SizedBox(height: 16),
             Text(
               unlocked ? badge.nameAr : 'ميدالية مقفلة',
-              style: AppText.section.copyWith(fontSize: 22),
+              style: const TextStyle(
+                color: AppColors.text,
+                fontSize: 22,
+                fontWeight: FontWeight.w800,
+              ),
             ),
             const SizedBox(height: 6),
             Text(
@@ -172,11 +248,14 @@ class _BadgeTile extends StatelessWidget {
             ),
             const SizedBox(height: 12),
             Container(
-              padding:
-                  const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+              padding: const EdgeInsets.symmetric(
+                  horizontal: 14, vertical: 5),
               decoration: BoxDecoration(
-                color: badge.tier.color.withAlpha(40),
-                borderRadius: BorderRadius.circular(12),
+                color: badge.tier.color.withValues(alpha: .18),
+                borderRadius: BorderRadius.circular(14),
+                border: Border.all(
+                  color: badge.tier.color.withValues(alpha: .5),
+                ),
               ),
               child: Text(
                 badge.tier.labelAr,

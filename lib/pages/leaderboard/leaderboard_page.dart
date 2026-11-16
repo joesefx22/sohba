@@ -6,11 +6,10 @@ import '../../providers/auth_provider.dart';
 import '../../providers/leaderboard_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
-import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
+import '../../widgets/ribbon_card.dart';
 
 class LeaderboardPage extends StatefulWidget {
-  /// Pass `true` when used as a tab inside `MainShellPage`.
   final bool embedded;
 
   const LeaderboardPage({super.key, this.embedded = false});
@@ -65,27 +64,32 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
     final body = SafeArea(
       child: p.loading
           ? const Center(
-              child: CircularProgressIndicator(color: AppColors.mint))
+              child: CircularProgressIndicator(color: AppColors.goldBright),
+            )
           : ListView(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
               children: [
-                GlassContainer(
+                RibbonCard(
+                  accent: _showMe ? AppColors.emerald : AppColors.textSecondary,
+                  radius: 20,
                   padding: const EdgeInsets.symmetric(
-                      horizontal: 14, vertical: 6),
+                      horizontal: 12, vertical: 4),
                   child: SwitchListTile(
                     title: const Text(
                       'إظهار اسمي في الترتيب',
                       style: TextStyle(
-                          color: AppColors.text,
-                          fontWeight: FontWeight.w500,
-                          fontSize: 14),
+                        color: AppColors.text,
+                        fontWeight: FontWeight.w600,
+                        fontSize: 14,
+                      ),
                     ),
                     subtitle: Text(
                       'سيبقى اسمك مخفياً "عبد من عباد الله" إن عطّلت',
                       style: AppText.caption.copyWith(fontSize: 11),
                     ),
                     value: _showMe,
-                    activeThumbColor: AppColors.emerald,
+                    activeThumbColor: AppColors.goldBright,
+                    activeTrackColor: AppColors.gold.withValues(alpha: .35),
                     onChanged: _toggleShowMe,
                   ),
                 ),
@@ -96,8 +100,9 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
                     child: Center(
                       child: Text(
                         'لا توجد بيانات هذا الأسبوع',
-                        style: AppText.body
-                            .copyWith(color: AppColors.textSecondary),
+                        style: AppText.body.copyWith(
+                          color: AppColors.textSecondary,
+                        ),
                       ),
                     ),
                   )
@@ -135,10 +140,14 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
 
   Widget _entryCard(LeaderboardEntry e, bool isMe) {
     final rankColor = _rankColor(e.rank);
-    return GlassContainer(
+    final accent = isMe ? AppColors.emerald : rankColor;
+
+    return RibbonCard(
+      accent: accent,
+      radius: 18,
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
-      tintColor: isMe ? AppColors.emerald.withAlpha(40) : null,
+      tintColor: isMe ? AppColors.emerald.withValues(alpha: .10) : null,
       child: Row(
         children: [
           Container(
@@ -146,56 +155,64 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
             height: 40,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: rankColor.withAlpha(50),
-              border: Border.all(color: rankColor, width: 2),
+              color: rankColor.withValues(alpha: .18),
+              border: Border.all(color: rankColor.withValues(alpha: .7), width: 2),
             ),
             child: Center(
               child: e.rank <= 3
                   ? Icon(_rankIcon(e.rank), color: rankColor, size: 20)
-                  : Text('${e.rank}',
+                  : Text(
+                      '${e.rank}',
                       style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color: rankColor,
-                          fontSize: 13)),
+                        fontWeight: FontWeight.bold,
+                        color: rankColor,
+                        fontSize: 13,
+                      ),
+                    ),
             ),
           ),
           const SizedBox(width: 12),
           Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Row(
               children: [
-                Row(
-                  children: [
-                    Flexible(
-                      child: Text(
-                        isMe ? 'أنت' : e.displayName,
-                        overflow: TextOverflow.ellipsis,
-                        style: AppText.body.copyWith(
-                          fontWeight: FontWeight.w600,
-                          color: isMe ? AppColors.mint : AppColors.text,
-                        ),
-                      ),
+                Flexible(
+                  child: Text(
+                    isMe ? 'أنت' : e.displayName,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      color: isMe ? AppColors.mint : AppColors.text,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w700,
                     ),
-                    if (e.currentStreak > 0) ...[
-                      const SizedBox(width: 6),
-                      const Icon(Icons.local_fire_department,
-                          size: 12, color: AppColors.streak),
-                      Text('${e.currentStreak}',
-                          style: const TextStyle(
-                              fontSize: 11,
-                              color: AppColors.streak,
-                              fontWeight: FontWeight.bold)),
-                    ],
-                  ],
+                  ),
                 ),
+                if (e.currentStreak > 0) ...[
+                  const SizedBox(width: 6),
+                  const Icon(Icons.local_fire_department,
+                      size: 13, color: AppColors.streak),
+                  Text(
+                    '${e.currentStreak}',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      color: AppColors.streak,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
               ],
             ),
           ),
-          Text('${e.weeklyPoints}',
-              style: AppText.numberSmall.copyWith(
-                  fontSize: 16, color: AppColors.gold)),
+          Text(
+            '${e.weeklyPoints}',
+            style: const TextStyle(
+              fontSize: 16,
+              color: AppColors.goldBright,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
           const SizedBox(width: 4),
-          Text('حسنة', style: AppText.caption.copyWith(fontSize: 10)),
+          Text('حسنة',
+              style: AppText.caption.copyWith(fontSize: 10)),
         ],
       ),
     );
@@ -210,7 +227,7 @@ class _LeaderboardPageState extends State<LeaderboardPage> {
       case 3:
         return const Color(0xFFCD7F32);
       default:
-        return AppColors.textSecondary;
+        return AppColors.gold;
     }
   }
 

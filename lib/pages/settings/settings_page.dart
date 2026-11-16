@@ -9,9 +9,9 @@ import '../../services/prayer_engine.dart';
 import '../../services/push_notification_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
-import '../../widgets/glass_container.dart';
-import '../../widgets/glass_scaffold.dart';
 import '../../widgets/error_state.dart';
+import '../../widgets/glass_scaffold.dart';
+import '../../widgets/ribbon_card.dart';
 
 class SettingsPage extends StatefulWidget {
   const SettingsPage({super.key});
@@ -89,33 +89,30 @@ class _SettingsPageState extends State<SettingsPage> {
       body: SafeArea(
         child: _loading
             ? const Center(
-                child: CircularProgressIndicator(color: AppColors.mint),
+                child: CircularProgressIndicator(color: AppColors.goldBright),
               )
             : ListView(
-                padding: const EdgeInsets.all(16),
+                padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
                 children: [
-                  // ── Location ────────────────────────────────────────
                   _section('الموقع'),
                   _tile(
                     icon: Icons.location_on,
                     title: 'المدينة',
                     subtitle: _city,
                     onTap: _pickCity,
+                    accent: AppColors.iman,
                   ),
                   const SizedBox(height: 16),
 
-                  // ── Prayer times preview ───────────────────────────
                   _section('توقيتات اليوم'),
                   _timesCard(),
                   const SizedBox(height: 16),
 
-                  // ── Notifications ──────────────────────────────────
                   _section('الإشعارات'),
 
-                  // System permission banner
                   if (!_systemPermission) ...[
                     _permissionBanner(),
-                    const SizedBox(height: 12),
+                    const SizedBox(height: 10),
                   ],
 
                   _switch(
@@ -155,26 +152,27 @@ class _SettingsPageState extends State<SettingsPage> {
                         ? 'معطّل'
                         : '$_reminderMinutes دقيقة',
                     onTap: _pickReminderMinutes,
+                    accent: AppColors.mint,
                   ),
                   const SizedBox(height: 12),
                   _testButton(),
                   const SizedBox(height: 16),
 
-                  // ── About ───────────────────────────────────────────
                   _section('عن التطبيق'),
                   _tile(
                     icon: Icons.info_outline,
                     title: 'الإصدار',
                     subtitle: '0.1.0 (MVP)',
                     onTap: null,
+                    accent: AppColors.textSecondary,
                   ),
                   _tile(
                     icon: Icons.mosque,
                     title: 'طريقة الحساب',
                     subtitle: 'الهيئة المصرية العامة للمساحة — شافعي',
                     onTap: null,
+                    accent: AppColors.gold,
                   ),
-                  const SizedBox(height: 24),
                 ],
               ),
       ),
@@ -183,23 +181,37 @@ class _SettingsPageState extends State<SettingsPage> {
 
   Widget _section(String title) {
     return Padding(
-      padding: const EdgeInsets.only(bottom: 8, right: 4, top: 8),
-      child: Text(
-        title,
-        style: const TextStyle(
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-          color: AppColors.goldBright,
-          letterSpacing: 1,
-        ),
+      padding: const EdgeInsets.only(bottom: 10, right: 4, top: 10),
+      child: Row(
+        children: [
+          Container(
+            width: 4,
+            height: 16,
+            decoration: BoxDecoration(
+              gradient: AppColors.goldGradient,
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          const SizedBox(width: 8),
+          Text(
+            title,
+            style: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w800,
+              color: AppColors.goldBright,
+              letterSpacing: 1,
+            ),
+          ),
+        ],
       ),
     );
   }
 
   Widget _permissionBanner() {
-    return GlassContainer(
+    return RibbonCard(
+      accent: AppColors.warning,
+      radius: 20,
       padding: const EdgeInsets.all(14),
-      tintColor: AppColors.warning.withAlpha(40),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -208,10 +220,14 @@ class _SettingsPageState extends State<SettingsPage> {
               const Icon(Icons.warning_amber_rounded,
                   color: AppColors.warning, size: 22),
               const SizedBox(width: 10),
-              Expanded(
+              const Expanded(
                 child: Text(
                   'الإشعارات غير مسموح بها في النظام',
-                  style: AppText.body.copyWith(fontWeight: FontWeight.w600),
+                  style: TextStyle(
+                    color: AppColors.text,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 14,
+                  ),
                 ),
               ),
             ],
@@ -219,7 +235,7 @@ class _SettingsPageState extends State<SettingsPage> {
           const SizedBox(height: 6),
           Text(
             'افتح الإعدادات واسمح بالإشعارات حتى تصلك تنبيهات الصلاة.',
-            style: AppText.caption,
+            style: AppText.caption.copyWith(fontSize: 12),
           ),
           const SizedBox(height: 10),
           Align(
@@ -230,7 +246,7 @@ class _SettingsPageState extends State<SettingsPage> {
               label: const Text('سماح'),
               style: FilledButton.styleFrom(
                 backgroundColor: AppColors.warning,
-                foregroundColor: Colors.black87,
+                foregroundColor: AppColors.background,
               ),
             ),
           ),
@@ -240,20 +256,27 @@ class _SettingsPageState extends State<SettingsPage> {
   }
 
   Widget _testButton() {
-    return GlassContainer(
+    return RibbonCard(
+      accent: AppColors.mint,
+      radius: 20,
+      padding: EdgeInsets.zero,
+      onTap: () async {
+        await NotificationScheduler.sendTest();
+        if (!mounted) return;
+        AppSnackbar.info(context, 'أُرسل — سيصل خلال 5 ثوانٍ');
+      },
       child: ListTile(
         leading: const Icon(Icons.notification_add, color: AppColors.mint),
         title: const Text(
           'إشعار تجريبي',
-          style: TextStyle(color: AppColors.text, fontWeight: FontWeight.w500),
+          style: TextStyle(
+            color: AppColors.text,
+            fontWeight: FontWeight.w600,
+          ),
         ),
         subtitle: Text('سيصل خلال 5 ثوانٍ', style: AppText.caption),
-        trailing: const Icon(Icons.chevron_left),
-        onTap: () async {
-          await NotificationScheduler.sendTest();
-          if (!mounted) return;
-          AppSnackbar.info(context, 'أُرسل — سيصل خلال 5 ثوانٍ');
-        },
+        trailing: const Icon(Icons.chevron_left,
+            color: AppColors.textSecondary),
       ),
     );
   }
@@ -264,20 +287,25 @@ class _SettingsPageState extends State<SettingsPage> {
     bool value,
     ValueChanged<bool> onChange,
   ) {
-    return GlassContainer(
+    return RibbonCard(
+      accent: value ? AppColors.emerald : AppColors.textSecondary,
+      radius: 18,
       margin: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.zero,
       child: SwitchListTile(
         title: Text(
           title,
           style: const TextStyle(
             color: AppColors.text,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
         ),
-        subtitle: Text(subtitle, style: AppText.caption),
+        subtitle: Text(subtitle, style: AppText.caption.copyWith(fontSize: 11)),
         value: value,
         onChanged: onChange,
-        activeThumbColor: AppColors.emerald,
+        activeThumbColor: AppColors.goldBright,
+        activeTrackColor: AppColors.gold.withValues(alpha: .35),
       ),
     );
   }
@@ -286,46 +314,74 @@ class _SettingsPageState extends State<SettingsPage> {
     required IconData icon,
     required String title,
     required String subtitle,
-    VoidCallback? onTap,
+    required VoidCallback? onTap,
+    Color accent = AppColors.mint,
   }) {
-    return GlassContainer(
+    return RibbonCard(
+      accent: accent,
+      radius: 18,
       margin: const EdgeInsets.only(bottom: 8),
+      padding: EdgeInsets.zero,
+      onTap: onTap,
       child: ListTile(
-        leading: Icon(icon, color: AppColors.mint),
+        leading: Container(
+          width: 38,
+          height: 38,
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: .16),
+            borderRadius: BorderRadius.circular(11),
+            border: Border.all(color: accent.withValues(alpha: .38)),
+          ),
+          child: Icon(icon, color: accent, size: 19),
+        ),
         title: Text(
           title,
           style: const TextStyle(
             color: AppColors.text,
-            fontWeight: FontWeight.w500,
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
           ),
         ),
-        subtitle: Text(subtitle, style: AppText.caption),
-        trailing: onTap != null ? const Icon(Icons.chevron_left) : null,
-        onTap: onTap,
+        subtitle: Text(subtitle, style: AppText.caption.copyWith(fontSize: 11)),
+        trailing:
+            onTap != null ? const Icon(Icons.chevron_left, size: 18) : null,
       ),
     );
   }
 
   Widget _timesCard() {
     final timelines = PrayerEngine.computeAllTimelines();
-    return GlassContainer(
+    return RibbonCard(
+      accent: AppColors.gold,
+      radius: 22,
       padding: const EdgeInsets.all(14),
       child: Column(
         children: timelines.entries.map((e) {
           return Padding(
-            padding: const EdgeInsets.symmetric(vertical: 4),
+            padding: const EdgeInsets.symmetric(vertical: 5),
             child: Row(
               children: [
-                Icon(e.key.icon, size: 18, color: AppColors.mint),
+                Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    color: AppColors.gold.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Icon(e.key.icon,
+                      size: 16, color: AppColors.goldBright),
+                ),
                 const SizedBox(width: 10),
                 Text(e.key.arabicName,
-                    style: const TextStyle(color: AppColors.text)),
+                    style: const TextStyle(
+                        color: AppColors.text, fontSize: 13)),
                 const Spacer(),
                 Text(
                   AdhanService.formatTime(e.value.adhan),
                   style: const TextStyle(
-                    color: AppColors.gold,
-                    fontWeight: FontWeight.bold,
+                    color: AppColors.goldBright,
+                    fontWeight: FontWeight.w800,
+                    fontSize: 13,
                   ),
                 ),
               ],
@@ -339,7 +395,7 @@ class _SettingsPageState extends State<SettingsPage> {
   Future<void> _pickCity() async {
     final selected = await showModalBottomSheet<(String, double, double)>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surfaceElevated,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -350,7 +406,10 @@ class _SettingsPageState extends State<SettingsPage> {
             title: Text(c.$1, style: const TextStyle(color: AppColors.text)),
             onTap: () => Navigator.pop(context, c),
             selected: c.$1 == _city,
-            selectedTileColor: AppColors.mint.withAlpha(30),
+            selectedTileColor: AppColors.gold.withValues(alpha: .15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           );
         }).toList(),
       ),
@@ -375,7 +434,7 @@ class _SettingsPageState extends State<SettingsPage> {
     final options = [0, 5, 10, 15, 30];
     final choice = await showModalBottomSheet<int>(
       context: context,
-      backgroundColor: AppColors.surface,
+      backgroundColor: AppColors.surfaceElevated,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -387,7 +446,10 @@ class _SettingsPageState extends State<SettingsPage> {
             title: Text(label,
                 style: const TextStyle(color: AppColors.text)),
             selected: m == _reminderMinutes,
-            selectedTileColor: AppColors.mint.withAlpha(30),
+            selectedTileColor: AppColors.gold.withValues(alpha: .15),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             onTap: () => Navigator.pop(context, m),
           );
         }).toList(),

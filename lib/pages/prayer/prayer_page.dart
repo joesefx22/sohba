@@ -17,11 +17,11 @@ import '../../services/adhan_service.dart';
 import '../../services/challenge_service.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
-import '../../widgets/glass_container.dart';
-import '../../widgets/prayer_complete_animation.dart';
+import '../../widgets/app_button.dart';
 import '../../widgets/badge_unlock_animation.dart';
 import '../../widgets/error_state.dart';
-import '../../widgets/app_button.dart';
+import '../../widgets/prayer_complete_animation.dart';
+import '../../widgets/ribbon_card.dart';
 
 class PrayerPage extends StatelessWidget {
   const PrayerPage({super.key});
@@ -35,9 +35,11 @@ class PrayerPage extends StatelessWidget {
       backgroundColor: Colors.transparent,
       body: SafeArea(
         child: RefreshIndicator(
+          color: AppColors.gold,
+          backgroundColor: AppColors.surfaceElevated,
           onRefresh: () => prayer.loadToday(auth.user!.id),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
             children: [
               Text('الصلاة', style: AppText.heading),
               const SizedBox(height: 4),
@@ -76,6 +78,21 @@ class _PrayerRow extends StatelessWidget {
   final PrayerName prayer;
   const _PrayerRow({required this.prayer});
 
+  Color _accentFor(PrayerStatus status) {
+    switch (status) {
+      case PrayerStatus.pending:
+        return AppColors.gold;
+      case PrayerStatus.congregation:
+        return AppColors.emerald;
+      case PrayerStatus.individual:
+        return AppColors.mint;
+      case PrayerStatus.qada:
+        return AppColors.warning;
+      case PrayerStatus.missed:
+        return AppColors.error;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final provider = context.watch<PrayerProvider>();
@@ -88,8 +105,10 @@ class _PrayerRow extends StatelessWidget {
     final timeline = provider.timelineFor(prayer);
     final now = DateTime.now();
     final phase = timeline.phaseAt(now);
+    final accent = _accentFor(log.status);
 
-    return GlassContainer(
+    return RibbonCard(
+      accent: accent,
       margin: const EdgeInsets.only(bottom: 12),
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -97,12 +116,23 @@ class _PrayerRow extends StatelessWidget {
         children: [
           Row(
             children: [
-              Icon(
-                prayer.icon,
-                color: log.status == PrayerStatus.pending
-                    ? AppColors.textSecondary
-                    : log.status.color,
-                size: 32,
+              Container(
+                width: 52,
+                height: 52,
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: .14),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: accent.withValues(alpha: .35),
+                  ),
+                ),
+                child: Icon(
+                  prayer.icon,
+                  color: log.status == PrayerStatus.pending
+                      ? AppColors.goldBright
+                      : log.status.color,
+                  size: 26,
+                ),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -111,32 +141,33 @@ class _PrayerRow extends StatelessWidget {
                   children: [
                     Text(
                       prayer.arabicName,
-                      style: AppText.body.copyWith(
+                      style: const TextStyle(
                         fontSize: 20,
-                        fontWeight: FontWeight.bold,
+                        fontWeight: FontWeight.w800,
                         color: AppColors.text,
                       ),
                     ),
                     Text(
                       'الأذان: ${AdhanService.formatTime(timeline.adhan)}',
-                      style: AppText.caption,
+                      style: AppText.caption.copyWith(fontSize: 12),
                     ),
                   ],
                 ),
               ),
               Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                padding: const EdgeInsets.symmetric(
+                    horizontal: 10, vertical: 4),
                 decoration: BoxDecoration(
-                  color: log.status.color.withAlpha(40),
+                  color: log.status.color.withValues(alpha: .15),
                   borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: log.status.color.withAlpha(150)),
+                  border:
+                      Border.all(color: log.status.color.withValues(alpha: .55)),
                 ),
                 child: Text(
                   log.status.arabicLabel,
                   style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
                     color: log.status.color,
                   ),
                 ),
@@ -181,7 +212,7 @@ class _PrayerRow extends StatelessWidget {
         text = 'فاتت الصلاة — يمكنك التوبة والقضاء';
         break;
     }
-    return Text(text, style: AppText.caption);
+    return Text(text, style: AppText.caption.copyWith(fontSize: 12));
   }
 
   Widget _recordedActions(BuildContext context, PrayerLog log) {
@@ -194,7 +225,7 @@ class _PrayerRow extends StatelessWidget {
               label: 'توبة',
               icon: Icons.replay,
               backgroundColor: AppColors.mint,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.background,
             ),
           ),
         ],
@@ -217,7 +248,7 @@ class _PrayerRow extends StatelessWidget {
               onPressed: () => _record(context, PrayerStatus.congregation),
               label: 'جماعة +27',
               backgroundColor: AppColors.emerald,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.background,
             ),
           ),
         if (canCongregation || canIndividual) const SizedBox(width: 8),
@@ -227,7 +258,7 @@ class _PrayerRow extends StatelessWidget {
               onPressed: () => _record(context, PrayerStatus.individual),
               label: 'منفردًا +1',
               backgroundColor: AppColors.iman,
-              foregroundColor: Colors.white,
+              foregroundColor: AppColors.background,
             ),
           ),
         if (canQada)
@@ -236,7 +267,7 @@ class _PrayerRow extends StatelessWidget {
               onPressed: () => _record(context, PrayerStatus.qada),
               label: 'قضاء',
               backgroundColor: AppColors.warning,
-              foregroundColor: Colors.black87,
+              foregroundColor: AppColors.background,
             ),
           ),
         if (!canCongregation && !canIndividual && !canQada)
@@ -260,7 +291,6 @@ class _PrayerRow extends StatelessWidget {
 
     final userId = auth.user!.id;
 
-    // ── STEP 1: persist prayer (server computes bonus) ──────────────
     final result = await prayerProv.recordPrayer(
       userId: userId,
       prayer: prayer,
@@ -273,15 +303,11 @@ class _PrayerRow extends StatelessWidget {
       return;
     }
 
-    // ── STEP 2: recompute streak server-side ────────────────────────
     final milestone = await streakProv.recordActivity(userId: userId);
-
-    // ── STEP 3: refresh profile ─────────────────────────────────────
     await auth.refreshProfile();
 
     if (!context.mounted) return;
 
-    // ── STEP 4: prayer animation ────────────────────────────────────
     await PrayerCompleteAnimation.show(
       context: context,
       prayer: prayer,
@@ -292,7 +318,6 @@ class _PrayerRow extends StatelessWidget {
 
     if (!context.mounted) return;
 
-    // ── STEP 5: milestone notification ──────────────────────────────
     if (milestone != null) {
       await notifProv.create(
         userId: userId,
@@ -303,7 +328,6 @@ class _PrayerRow extends StatelessWidget {
       );
     }
 
-    // ── STEP 6: compute FULL badge context from server + qiyam ──────
     try {
       final prayerRepo = PrayerRepository(Supabase.instance.client);
       final recentLogs = await prayerRepo.getLogsInRange(
@@ -312,7 +336,6 @@ class _PrayerRow extends StatelessWidget {
         to: DateTime.now(),
       );
 
-      // ← تحميل بيانات القيام
       Map<String, Map<String, dynamic>> qiyamData = {};
       try {
         final qiyamRepo = QiyamRepository(Supabase.instance.client);
@@ -332,7 +355,6 @@ class _PrayerRow extends StatelessWidget {
         qiyamLogsByDate: qiyamData,
       );
 
-      // ← مزامنة الألقاب مع الميداليات الجديدة
       try {
         final titleProv = context.read<TitleProvider>();
         await titleProv.syncFromBadges(userId, badgeProv.unlockedIds);
@@ -340,7 +362,6 @@ class _PrayerRow extends StatelessWidget {
         debugPrint('Title sync error: $e');
       }
 
-      // ── STEP 7: badge animations, serial ──────────────────────────
       for (final badge in unlocked) {
         if (!context.mounted) break;
         await BadgeUnlockAnimation.show(context: context, badge: badge);
@@ -353,13 +374,11 @@ class _PrayerRow extends StatelessWidget {
         );
       }
     } catch (e) {
-      // Badge evaluation failure should NEVER break prayer recording.
       debugPrint('Badge evaluation error: $e');
     }
 
     if (!context.mounted) return;
 
-    // ── STEP 8: advance group challenges (non-fatal) ────────────────
     try {
       await ChallengeService.advanceOnPrayer(
         userId: userId,
@@ -430,15 +449,24 @@ class _MissedPrayerCard extends StatelessWidget {
         '${log.date.year}-${log.date.month.toString().padLeft(2, '0')}-'
         '${log.date.day.toString().padLeft(2, '0')}';
 
-    return GlassContainer(
+    return RibbonCard(
+      accent: color,
       margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(14),
       child: Row(
         children: [
-          Icon(
-            isQada ? Icons.check_circle : Icons.warning_amber_rounded,
-            color: color,
-            size: 24,
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: .16),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(
+              isQada ? Icons.check_circle : Icons.warning_amber_rounded,
+              color: color,
+              size: 22,
+            ),
           ),
           const SizedBox(width: 12),
           Expanded(
@@ -461,7 +489,10 @@ class _MissedPrayerCard extends StatelessWidget {
           if (!isQada)
             TextButton(
               onPressed: () => _markQada(context),
-              child: const Text('قضاء'),
+              child: Text('قضاء',
+                  style: TextStyle(
+                      color: AppColors.goldBright,
+                      fontWeight: FontWeight.w700)),
             ),
         ],
       ),
@@ -474,10 +505,13 @@ class _MissedPrayerCard extends StatelessWidget {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (_) => AlertDialog(
-        title: const Text('تأكيد القضاء'),
+        backgroundColor: AppColors.surfaceElevated,
+        title: const Text('تأكيد القضاء',
+            style: TextStyle(color: AppColors.text)),
         content: Text(
           'هل صليت ${log.prayer.arabicName} قضاءً عن يوم '
           '${log.date.day}/${log.date.month}؟',
+          style: const TextStyle(color: AppColors.textSecondary),
         ),
         actions: [
           TextButton(
@@ -486,6 +520,10 @@ class _MissedPrayerCard extends StatelessWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.pop(context, true),
+            style: FilledButton.styleFrom(
+              backgroundColor: AppColors.emerald,
+              foregroundColor: AppColors.background,
+            ),
             child: const Text('نعم، صليتها'),
           ),
         ],
