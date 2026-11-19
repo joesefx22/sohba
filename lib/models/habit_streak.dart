@@ -18,9 +18,6 @@ class HabitStreak {
       case 'asr_congregation': return 'العصر جماعة';
       case 'maghrib_congregation': return 'المغرب جماعة';
       case 'isha_congregation': return 'العشاء جماعة';
-      case 'morning_athkar': return 'أذكار الصباح';
-      case 'evening_athkar': return 'أذكار المساء';
-      case 'after_prayer_athkar': return 'أذكار بعد الصلاة';
       case 'qiyam': return 'قيام الليل';
       case 'duha': return 'صلاة الضحى';
       case 'sunnah_12': return '12 ركعة سنة';

@@ -4,10 +4,10 @@ import 'package:provider/provider.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 
 import 'config/env_config.dart';
+import 'data/sync/sync_service.dart';
 import 'providers/auth_provider.dart';
 import 'providers/group_provider.dart';
 import 'providers/prayer_provider.dart';
-import 'providers/athkar_provider.dart';
 import 'providers/badge_provider.dart';
 import 'providers/notification_provider.dart';
 import 'providers/streak_provider.dart';
@@ -23,13 +23,11 @@ import 'pages/splash_page.dart';
 import 'services/adhan_audio_service.dart';
 import 'services/push_notification_service.dart';
 import 'theme/app_colors.dart';
-// ✅ REMOVED: import 'theme/app_text.dart'; (redundant — app_theme.dart re-exports it)
 import 'theme/app_theme.dart';
 import 'widgets/error_boundary.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
   ErrorBoundary.install();
 
   await EnvConfig.load();
@@ -45,12 +43,13 @@ Future<void> main() async {
   );
 
   await PushNotificationService.init(
-    onTap: (payload) {
-      debugPrint('Notification tapped: $payload');
-    },
+    onTap: (payload) => debugPrint('Notification tapped: $payload'),
   );
 
   await AdhanAudioService.init();
+
+  // ✅ Offline sync start
+  SyncService.instance.start();
 
   runApp(const SohbaApp());
 }
@@ -66,8 +65,8 @@ class SohbaApp extends StatelessWidget {
           ChangeNotifierProvider(create: (_) => AuthProvider()..init()),
           ChangeNotifierProvider(create: (_) => GroupProvider()),
           ChangeNotifierProvider(create: (_) => PrayerProvider()),
-          ChangeNotifierProvider(create: (_) => AthkarProvider()),
-          ChangeNotifierProvider(create: (_) => BadgeProvider()),
+          // ❌ AthkarProvider — محذوف
+          ChangeNotifierProvider(create: (_) => BadgeProvider()),      // ✅ باقي
           ChangeNotifierProvider(create: (_) => StreakProvider()),
           ChangeNotifierProvider(create: (_) => NotificationProvider()),
           ChangeNotifierProvider(create: (_) => LockProvider()),
@@ -113,8 +112,7 @@ class _ConfigErrorApp extends StatelessWidget {
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  const Icon(Icons.error_outline,
-                      size: 64, color: AppColors.error),
+                  const Icon(Icons.error_outline, size: 64, color: AppColors.error),
                   const SizedBox(height: 16),
                   Text('إعدادات ناقصة',
                       style: AppText.heading.copyWith(fontSize: 22)),

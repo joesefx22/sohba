@@ -3,10 +3,8 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
-import '../../models/athkar.dart';
 import '../../models/badge.dart';
 import '../../models/prayer_log.dart';
-import '../../providers/athkar_provider.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/badge_provider.dart';
 import '../../providers/daily_lesson_provider.dart';
@@ -17,16 +15,15 @@ import '../../providers/title_provider.dart';
 import '../../services/prayer_engine.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
-import '../../widgets/ribbon_card.dart';           // ← جديد
+import '../../widgets/ribbon_card.dart';
 import '../../widgets/streak_protection_sheet.dart';
-import '../athkar/athkar_detail_page.dart';
+import '../achievements/achievements_tab.dart';
 import '../content/content_tab.dart';
+import '../leaderboard/leaderboard_page.dart';
 import '../lessons/daily_lesson_page.dart';
 import '../prayer/prayer_page.dart';
 import '../qiyam/qiyam_page.dart';
-import '../titles/titles_page.dart';
 
-/// Midnight Royal dashboard — hybrid of existing features + new visual language.
 class DashboardV2 extends StatelessWidget {
   const DashboardV2({super.key});
 
@@ -34,7 +31,6 @@ class DashboardV2 extends StatelessWidget {
   Widget build(BuildContext context) {
     final auth = context.watch<AuthProvider>();
     final prayer = context.watch<PrayerProvider>();
-    final athkar = context.watch<AthkarProvider>();
     final streak = context.watch<StreakProvider>();
     final lesson = context.watch<DailyLessonProvider>();
     final badges = context.watch<BadgeProvider>();
@@ -42,11 +38,9 @@ class DashboardV2 extends StatelessWidget {
     final titles = context.watch<TitleProvider>();
 
     final profile = auth.profile;
-    final iman = ((profile?['iman'] ?? 0) as num).toDouble();
     final hasanat = ((profile?['total_hasanat'] ?? 0) as num).toInt();
     final sayyiat =
         ((profile?['total_sayyiat_unrepented'] ?? 0) as num).toInt();
-    final level = (iman / 100).floor() + 1;
 
     return RefreshIndicator(
       color: AppColors.gold,
@@ -55,8 +49,7 @@ class DashboardV2 extends StatelessWidget {
         final user = auth.user;
         if (user == null) return;
         await Future.wait([
-          prayer.loadToday(user.id),
-          athkar.loadAll(user.id),
+          prayer.load(),
           streak.loadForUser(user.id),
           habits.loadForUser(user.id),
           badges.loadForUser(user.id),
@@ -71,53 +64,41 @@ class DashboardV2 extends StatelessWidget {
         ),
         padding: const EdgeInsets.fromLTRB(0, 0, 0, 28),
         children: [
-          // 1. Hero profile with mosque
           _HeroProfile(
             name: auth.displayName,
             title: titles.activeTitle?.nameAr,
             avatarUrl: profile?['avatar_url'] as String?,
-            iman: iman,
             hasanat: hasanat,
-            level: level,
+            sayyiat: sayyiat,
             streak: streak.currentStreak,
           ),
           const SizedBox(height: 18),
 
-          // 2. Smart "الآن" card (prayer/athkar/next-prayer)
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: _SmartNowCard(
               prayer: prayer,
-              athkar: athkar,
-              onPrayer: () => _push(context, const PrayerPage()),
-              onAthkar: (cat) =>
-                  _push(context, AthkarDetailPage(category: cat)),
+              onRecord: (p, cong) => _record(context, p, cong),
+              onOpen: () => _push(context, const PrayerPage()),
             ),
           ),
           const SizedBox(height: 18),
 
-          // 3. Quick actions grid
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: _QuickActions(
               onPrayer: () => _push(context, const PrayerPage()),
               onQuran: () => _push(context, const ContentTab()),
               onQiyam: () => _push(context, const QiyamPage()),
-              onAthkar: () {
-                final cat = athkar.categories
-                    .where((c) => c.id == 'morning' || c.id == 'evening')
-                    .firstOrNull;
-                if (cat != null) {
-                  _push(context, AthkarDetailPage(category: cat));
-                }
-              },
-              onSunnah: () => _push(context, const QiyamPage()),
               onDaily: () => _push(context, const DailyLessonPage()),
+              onLeaderboard: () =>
+                  _push(context, const LeaderboardPage()),
+              onAchievements: () =>
+                  _push(context, const AchievementsTab()),
             ),
           ),
           const SizedBox(height: 18),
 
-          // 4. Streak achievement
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: _StreakAchievementCard(
@@ -129,7 +110,6 @@ class DashboardV2 extends StatelessWidget {
             ),
           ),
 
-          // 5. Streak protection
           if (streak.canProtectYesterday) ...[
             const SizedBox(height: 14),
             Padding(
@@ -160,31 +140,24 @@ class DashboardV2 extends StatelessWidget {
             ),
           ],
 
-          // 6. Habits list
-          if (habits.active.isNotEmpty ||
-              athkar.mandatoryCategories.isNotEmpty) ...[
+          if (habits.active.isNotEmpty) ...[
             const SizedBox(height: 14),
             Padding(
               padding: const EdgeInsets.symmetric(horizontal: 18),
               child: _HabitsCard(
-                athkar: athkar,
                 habits: habits,
                 prayer: prayer,
-                onAthkarTap: (cat) =>
-                    _push(context, AthkarDetailPage(category: cat)),
                 onPrayerTap: () => _push(context, const PrayerPage()),
               ),
             ),
           ],
 
-          // 7. Next achievement
           const SizedBox(height: 14),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: _NextAchievementCard(badges: badges),
           ),
 
-          // 8. Lesson
           if (lesson.lesson != null) ...[
             const SizedBox(height: 14),
             Padding(
@@ -198,7 +171,6 @@ class DashboardV2 extends StatelessWidget {
           ],
           const SizedBox(height: 16),
 
-          // 9. Mini balances
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 18),
             child: Row(
@@ -235,42 +207,51 @@ class DashboardV2 extends StatelessWidget {
   }
 
   static void _push(BuildContext context, Widget page) {
-    Navigator.of(context).push(
-      MaterialPageRoute<void>(builder: (_) => page),
-    );
+    Navigator.of(context).push(MaterialPageRoute<void>(builder: (_) => page));
+  }
+
+  static Future<void> _record(
+    BuildContext context,
+    PrayerName prayer,
+    bool congregation,
+  ) async {
+    final prov = context.read<PrayerProvider>();
+    final ok = await prov.record(prayer, congregation: congregation);
+    if (!context.mounted) return;
+    if (!ok) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('انتهى وقت هذه الصلاة')),
+      );
+    }
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Hero / profile
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// Hero profile (بدون إيمان/مستوى)
+// ─────────────────────────────────────────────────────────────
 class _HeroProfile extends StatelessWidget {
   const _HeroProfile({
     required this.name,
     required this.title,
     required this.avatarUrl,
-    required this.iman,
     required this.hasanat,
-    required this.level,
+    required this.sayyiat,
     required this.streak,
   });
 
   final String name;
   final String? title;
   final String? avatarUrl;
-  final double iman;
   final int hasanat;
-  final int level;
+  final int sayyiat;
   final int streak;
 
   @override
   Widget build(BuildContext context) {
-    final initial =
-        name.isNotEmpty ? name.characters.first : 'ص';
+    final initial = name.isNotEmpty ? name.characters.first : 'ص';
 
     return SizedBox(
-      height: 390,
+      height: 370,
       child: Stack(
         clipBehavior: Clip.none,
         children: [
@@ -280,9 +261,8 @@ class _HeroProfile extends StatelessWidget {
             right: 0,
             height: 245,
             child: ClipRRect(
-              borderRadius: const BorderRadius.vertical(
-                bottom: Radius.circular(34),
-              ),
+              borderRadius:
+                  const BorderRadius.vertical(bottom: Radius.circular(34)),
               child: Stack(
                 fit: StackFit.expand,
                 children: [
@@ -397,10 +377,10 @@ class _HeroProfile extends StatelessWidget {
                       ),
                       Expanded(
                         child: _HeroStat(
-                          icon: Icons.stars_rounded,
-                          value: iman.toStringAsFixed(1),
-                          label: 'رصيد الإيمان',
-                          color: AppColors.goldBright,
+                          icon: Icons.remove_circle_outline,
+                          value: sayyiat.toString(),
+                          label: 'سيئات',
+                          color: AppColors.error,
                         ),
                       ),
                     ],
@@ -408,27 +388,6 @@ class _HeroProfile extends StatelessWidget {
                   const SizedBox(height: 13),
                   Row(
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 11,
-                          vertical: 5,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppColors.iman.withValues(alpha: .15),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: AppColors.iman.withValues(alpha: .35),
-                          ),
-                        ),
-                        child: Text(
-                          'المستوى $level',
-                          style: const TextStyle(
-                            color: Color(0xFFC5B7FF),
-                            fontSize: 11,
-                            fontWeight: FontWeight.w700,
-                          ),
-                        ),
-                      ),
                       const Spacer(),
                       if (streak > 0)
                         Row(
@@ -446,18 +405,6 @@ class _HeroProfile extends StatelessWidget {
                           ],
                         ),
                     ],
-                  ),
-                  const SizedBox(height: 10),
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(20),
-                    child: LinearProgressIndicator(
-                      value: (iman % 100) / 100,
-                      minHeight: 5,
-                      backgroundColor: Colors.white.withValues(alpha: .09),
-                      valueColor: const AlwaysStoppedAnimation(
-                        AppColors.goldBright,
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -515,97 +462,88 @@ class _HeroStat extends StatelessWidget {
     required this.label,
     required this.color,
   });
-
   final IconData icon;
   final String value;
   final String label;
   final Color color;
 
   @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        Icon(icon, color: color, size: 23),
-        const SizedBox(height: 4),
-        Text(
-          value,
-          style: TextStyle(
-            color: color,
-            fontSize: 23,
-            fontWeight: FontWeight.w800,
-            height: 1.1,
+  Widget build(BuildContext context) => Column(
+        children: [
+          Icon(icon, color: color, size: 23),
+          const SizedBox(height: 4),
+          Text(
+            value,
+            style: TextStyle(
+              color: color,
+              fontSize: 23,
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+            ),
           ),
-        ),
-        const SizedBox(height: 3),
-        Text(label, style: AppText.caption.copyWith(fontSize: 12)),
-      ],
-    );
-  }
+          const SizedBox(height: 3),
+          Text(label, style: AppText.caption.copyWith(fontSize: 12)),
+        ],
+      );
 }
 
 class _MosqueFallback extends StatelessWidget {
   const _MosqueFallback();
-
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF151D42), Color(0xFF30234F), Color(0xFF090F29)],
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
+  Widget build(BuildContext context) => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF151D42), Color(0xFF30234F), Color(0xFF090F29)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
         ),
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            top: 32,
-            left: 60,
-            child: Icon(Icons.nightlight_round,
-                size: 55,
-                color: AppColors.goldBright.withValues(alpha: .8)),
-          ),
-          const Center(
-            child: Icon(Icons.mosque_rounded,
-                size: 150, color: Color(0x99E9B95E)),
-          ),
-          Positioned(
-            bottom: 20,
-            left: 0,
-            right: 0,
-            child: Container(
-              height: 70,
-              decoration: const BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [Colors.transparent, Color(0xFF080D24)],
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
+        child: Stack(
+          children: [
+            Positioned(
+              top: 32,
+              left: 60,
+              child: Icon(Icons.nightlight_round,
+                  size: 55,
+                  color: AppColors.goldBright.withValues(alpha: .8)),
+            ),
+            const Center(
+              child: Icon(Icons.mosque_rounded,
+                  size: 150, color: Color(0x99E9B95E)),
+            ),
+            Positioned(
+              bottom: 20,
+              left: 0,
+              right: 0,
+              child: Container(
+                height: 70,
+                decoration: const BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [Colors.transparent, Color(0xFF080D24)],
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                  ),
                 ),
               ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Smart "الآن" card — keeps intelligent prioritization + gains prayer background
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// Smart "الآن" card — الصلاة الحالية/القادمة
+// ─────────────────────────────────────────────────────────────
 class _SmartNowCard extends StatefulWidget {
   const _SmartNowCard({
     required this.prayer,
-    required this.athkar,
-    required this.onPrayer,
-    required this.onAthkar,
+    required this.onRecord,
+    required this.onOpen,
   });
 
   final PrayerProvider prayer;
-  final AthkarProvider athkar;
-  final VoidCallback onPrayer;
-  final void Function(AthkarCategory) onAthkar;
+  final Future<void> Function(PrayerName, bool) onRecord;
+  final VoidCallback onOpen;
 
   @override
   State<_SmartNowCard> createState() => _SmartNowCardState();
@@ -631,101 +569,62 @@ class _SmartNowCardState extends State<_SmartNowCard> {
   @override
   Widget build(BuildContext context) {
     final now = DateTime.now();
-    final focus = widget.prayer.currentFocusPrayer;
+    final current = PrayerEngine.currentOrNext(
+      date: widget.prayer.selectedDate,
+      statuses: widget.prayer.statuses,
+      now: now,
+    );
 
-    // Priority 1: prayer in window
-    if (focus != null) {
-      final log = widget.prayer.todayLogs[focus];
-      if (log == null || !log.isRecorded) {
-        return _prayerCard(prayer: focus, isCurrent: true);
-      }
+    if (current.status == PrayerStatus.pending) {
+      return _prayerCard(
+        prayer: current.prayer,
+        at: current.at,
+        isCurrent: true,
+        now: now,
+      );
     }
-
-    // Priority 2: morning / evening athkar
-    final hour = now.hour;
-    if (hour >= 5 && hour < 12) {
-      final morning = widget.athkar.categories
-          .where((c) => c.id == 'morning')
-          .firstOrNull;
-      if (morning != null && widget.athkar.completionFor(morning) < 1.0) {
-        return _athkarCard(morning);
-      }
+    if (current.status == PrayerStatus.upcoming) {
+      return _prayerCard(
+        prayer: current.prayer,
+        at: current.at,
+        isCurrent: false,
+        now: now,
+      );
     }
-    if (hour >= 16 && hour < 22) {
-      final evening = widget.athkar.categories
-          .where((c) => c.id == 'evening')
-          .firstOrNull;
-      if (evening != null && widget.athkar.completionFor(evening) < 1.0) {
-        return _athkarCard(evening);
-      }
-    }
-
-    // Priority 3: next prayer
-    final next = _nextPrayerAfter(widget.prayer.todayLogs);
-    if (next != null) {
-      return _prayerCard(prayer: next, isCurrent: false);
-    }
-
-    // Fallback: all recorded
     return _fallbackCard();
-  }
-
-  PrayerName? _nextPrayerAfter(Map<PrayerName, PrayerLog> logs) {
-    for (final p in PrayerName.values) {
-      final log = logs[p];
-      if (log == null || !log.isRecorded) return p;
-    }
-    return null;
   }
 
   Widget _prayerCard({
     required PrayerName prayer,
+    required DateTime at,
     required bool isCurrent,
+    required DateTime now,
   }) {
-    final timeline = widget.prayer.timelineFor(prayer);
-    final now = DateTime.now();
-    final phase = timeline.phaseAt(now);
-
-    String label;
-    String timeLabel;
-    if (isCurrent) {
-      label = 'الصلاة الآن';
-      timeLabel = phase == PrayerPhase.congregationOpen
-          ? 'وقت الجماعة'
-          : 'وقت الانفراد';
-    } else {
-      label = 'الصلاة القادمة';
-      var adhan = timeline.adhan;
-      if (prayer == PrayerName.fajr && adhan.isBefore(now)) {
-        adhan = adhan.add(const Duration(days: 1));
-      }
-      timeLabel = _formatRemaining(adhan.difference(now));
-    }
+    final label = isCurrent ? 'الصلاة الآن' : 'الصلاة القادمة';
+    final timeLabel = isCurrent
+        ? 'وقت الأداء — سجّلها الآن'
+        : _formatRemaining(at.difference(now));
 
     return RibbonCard(
       accent: AppColors.gold,
       radius: 26,
       padding: EdgeInsets.zero,
-      onTap: widget.onPrayer,
+      onTap: widget.onOpen,
       child: SizedBox(
-        height: 168,
+        height: isCurrent ? 210 : 168,
         child: Stack(
           fit: StackFit.expand,
           children: [
-            // ── الصورة ──
             ClipRect(
               child: Transform.scale(
                 scale: 1.06,
                 child: Image.asset(
                   'assets/images/sohba/prayers/${prayer.name}.jpg',
                   fit: BoxFit.cover,
-                  alignment: Alignment.center,
                   errorBuilder: (_, __, ___) => _PrayerFallback(),
                 ),
               ),
             ),
-
-            // ── تعتيم أفقي (لقراءة النص) ──
             const DecoratedBox(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
@@ -740,154 +639,83 @@ class _SmartNowCardState extends State<_SmartNowCard> {
                 ),
               ),
             ),
-
-            // ── fade علوي (الصورة بتذوب في الكارد) ──
-            const Positioned(
-              top: 0,
-              left: 0,
-              right: 0,
-              height: 48,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.topCenter,
-                      end: Alignment.bottomCenter,
-                      colors: [Color(0xFF1B2348), Colors.transparent],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // ── fade سفلي ──
-            const Positioned(
-              bottom: 0,
-              left: 0,
-              right: 0,
-              height: 48,
-              child: IgnorePointer(
-                child: DecoratedBox(
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      begin: Alignment.bottomCenter,
-                      end: Alignment.topCenter,
-                      colors: [Color(0xFF111A39), Colors.transparent],
-                    ),
-                  ),
-                ),
-              ),
-            ),
-
-            // ── المحتوى ──
             Padding(
               padding: const EdgeInsets.all(18),
-              child: Row(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Expanded(
-                    flex: 5,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          timeLabel,
-                          style: AppText.caption.copyWith(
-                            color: AppColors.text,
-                            fontSize: 13,
-                          ),
+                  Row(
+                    children: [
+                      Text(
+                        label,
+                        style: const TextStyle(
+                          color: AppColors.goldBright,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700,
                         ),
-                        const SizedBox(height: 12),
-                        GestureDetector(
-                          onTap: () {
-                            final afterPrayer = widget.athkar.categories
-                                .where((c) => c.id == 'after_prayer')
-                                .firstOrNull;
-                            if (afterPrayer != null) {
-                              widget.onAthkar(afterPrayer);
-                            }
-                          },
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 7,
-                            ),
-                            decoration: BoxDecoration(
-                              color:
-                                  AppColors.background.withValues(alpha: .58),
-                              borderRadius: BorderRadius.circular(24),
-                              border: Border.all(
-                                color: AppColors.gold.withValues(alpha: .78),
-                              ),
-                            ),
-                            child: const Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                Icon(Icons.menu_book_rounded,
-                                    color: AppColors.goldBright, size: 16),
-                                SizedBox(width: 6),
-                                Text(
-                                  'أذكار الصلاة',
-                                  style: TextStyle(
-                                    color: AppColors.goldBright,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      ],
-                    ),
+                      ),
+                      const SizedBox(width: 6),
+                      const Icon(Icons.access_time_rounded,
+                          color: AppColors.goldBright, size: 18),
+                    ],
                   ),
-                  Container(
-                    width: 1,
-                    height: 105,
-                    color: AppColors.gold.withValues(alpha: .3),
-                  ),
-                  const SizedBox(width: 15),
-                  Expanded(
-                    flex: 6,
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      crossAxisAlignment: CrossAxisAlignment.end,
-                      children: [
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.end,
-                          children: [
-                            Text(
-                              label,
-                              style: const TextStyle(
-                                color: AppColors.goldBright,
-                                fontSize: 15,
-                                fontWeight: FontWeight.w700,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            const Icon(Icons.access_time_rounded,
-                                color: AppColors.goldBright, size: 20),
-                          ],
+                  const SizedBox(height: 8),
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    children: [
+                      Text(
+                        prayer.arabicName,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 32,
+                          fontWeight: FontWeight.w800,
                         ),
-                        const SizedBox(height: 8),
-                        Text(
-                          prayer.arabicName,
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800,
-                          ),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          _formatTime(timeline.adhan),
+                      ),
+                      const SizedBox(width: 10),
+                      Padding(
+                        padding: const EdgeInsets.only(bottom: 5),
+                        child: Text(
+                          _formatTime(at),
                           style: AppText.body.copyWith(
                             color: AppColors.textSecondary,
                           ),
                         ),
-                      ],
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    timeLabel,
+                    style: AppText.caption.copyWith(
+                      color: AppColors.text,
+                      fontSize: 13,
                     ),
                   ),
+                  if (isCurrent) ...[
+                    const SizedBox(height: 16),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: _actionButton(
+                            label: 'صليت جماعة',
+                            color: AppColors.emerald,
+                            onTap: () =>
+                                widget.onRecord(prayer, true),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: _actionButton(
+                            label: 'صليت فردي',
+                            color: AppColors.mint,
+                            onTap: () =>
+                                widget.onRecord(prayer, false),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
                 ],
               ),
             ),
@@ -897,121 +725,77 @@ class _SmartNowCardState extends State<_SmartNowCard> {
     );
   }
 
-  Widget _athkarCard(AthkarCategory category) {
-    final done = widget.athkar.completedCountIn(category);
-    final total = category.totalCount;
-    return RibbonCard(
-      accent: AppColors.gold,
-      radius: 26,
-      padding: const EdgeInsets.all(20),
-      onTap: () => widget.onAthkar(category),
-      child: Row(
-        children: [
-          Container(
-            width: 60,
-            height: 60,
-            decoration: BoxDecoration(
-              color: AppColors.gold.withValues(alpha: .18),
-              borderRadius: BorderRadius.circular(18),
-            ),
-            child: Icon(
-              category.id == 'morning'
-                  ? Icons.wb_twilight
-                  : Icons.nights_stay,
-              color: AppColors.goldBright,
-              size: 28,
+  Widget _actionButton({
+    required String label,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return Material(
+      color: color.withValues(alpha: .22),
+      borderRadius: BorderRadius.circular(12),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(12),
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 11),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: color.withValues(alpha: .55)),
+          ),
+          child: Center(
+            child: Text(
+              label,
+              style: TextStyle(
+                color: color,
+                fontSize: 13,
+                fontWeight: FontWeight.w800,
+              ),
             ),
           ),
-          const SizedBox(width: 14),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'الآن',
-                  style: TextStyle(
-                    color: AppColors.goldBright,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  category.nameAr,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(20),
-                  child: LinearProgressIndicator(
-                    value: total > 0 ? done / total : 0,
-                    minHeight: 6,
-                    backgroundColor: Colors.white.withValues(alpha: .12),
-                    valueColor: const AlwaysStoppedAnimation(
-                      AppColors.goldBright,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  '$done / $total',
-                  style: AppText.caption.copyWith(fontSize: 11),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 8),
-          const Icon(Icons.chevron_left, color: AppColors.goldBright),
-        ],
+        ),
       ),
     );
   }
 
-  Widget _fallbackCard() {
-    return RibbonCard(
-      accent: AppColors.emerald,
-      padding: const EdgeInsets.all(18),
-      onTap: widget.onPrayer,
-      child: Row(
-        children: [
-          Container(
-            width: 44,
-            height: 44,
-            decoration: BoxDecoration(
-              color: AppColors.emerald.withValues(alpha: .18),
-              borderRadius: BorderRadius.circular(14),
+  Widget _fallbackCard() => RibbonCard(
+        accent: AppColors.emerald,
+        padding: const EdgeInsets.all(18),
+        onTap: widget.onOpen,
+        child: Row(
+          children: [
+            Container(
+              width: 44,
+              height: 44,
+              decoration: BoxDecoration(
+                color: AppColors.emerald.withValues(alpha: .18),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: const Icon(Icons.check_circle,
+                  color: AppColors.mint, size: 24),
             ),
-            child: const Icon(Icons.check_circle,
-                color: AppColors.mint, size: 24),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'الحمد لله',
-                  style: TextStyle(
-                    color: AppColors.text,
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'الحمد لله',
+                    style: TextStyle(
+                      color: AppColors.text,
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-                Text(
-                  'كل الصلوات مكتملة — استمر على الخير',
-                  style: AppText.caption.copyWith(fontSize: 12),
-                ),
-              ],
+                  Text(
+                    'كل الصلوات مكتملة — استمر على الخير',
+                    style: AppText.caption.copyWith(fontSize: 12),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
 
   String _formatRemaining(Duration diff) {
     if (diff.isNegative) return 'الآن';
@@ -1031,44 +815,41 @@ class _SmartNowCardState extends State<_SmartNowCard> {
 
 class _PrayerFallback extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    return Container(
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Color(0xFF3A315B), Color(0xFF182448), Color(0xFF080D24)],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
+  Widget build(BuildContext context) => Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF3A315B), Color(0xFF182448), Color(0xFF080D24)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
         ),
-      ),
-      child: const Align(
-        alignment: Alignment.centerLeft,
-        child: Icon(Icons.mosque_rounded,
-            size: 110, color: Color(0x55F6D58D)),
-      ),
-    );
-  }
+        child: const Align(
+          alignment: Alignment.centerLeft,
+          child: Icon(Icons.mosque_rounded,
+              size: 110, color: Color(0x55F6D58D)),
+        ),
+      );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Quick actions grid
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// Quick actions (6 عناصر — بدون أذكار/سنن)
+// ─────────────────────────────────────────────────────────────
 class _QuickActions extends StatelessWidget {
   const _QuickActions({
     required this.onPrayer,
     required this.onQuran,
     required this.onQiyam,
-    required this.onAthkar,
-    required this.onSunnah,
     required this.onDaily,
+    required this.onLeaderboard,
+    required this.onAchievements,
   });
 
   final VoidCallback onPrayer;
   final VoidCallback onQuran;
   final VoidCallback onQiyam;
-  final VoidCallback onAthkar;
-  final VoidCallback onSunnah;
   final VoidCallback onDaily;
+  final VoidCallback onLeaderboard;
+  final VoidCallback onAchievements;
 
   @override
   Widget build(BuildContext context) {
@@ -1078,12 +859,12 @@ class _QuickActions extends StatelessWidget {
           const Color(0xFF73C8EA), onQuran),
       _ActionData('القيام', Icons.nightlight_round,
           const Color(0xFFB18AE8), onQiyam),
-      _ActionData('الأذكار', Icons.front_hand_rounded,
-          const Color(0xFFE2B66D), onAthkar),
-      _ActionData('السنن', Icons.account_balance_rounded,
-          const Color(0xFF8EA8F2), onSunnah),
       _ActionData('الدروس', Icons.event_note_rounded,
           const Color(0xFF8B83D7), onDaily),
+      _ActionData('الترتيب', Icons.leaderboard_rounded,
+          const Color(0xFF8EA8F2), onLeaderboard),
+      _ActionData('الإنجازات', Icons.emoji_events_rounded,
+          const Color(0xFFE2B66D), onAchievements),
     ];
 
     return GridView.builder(
@@ -1135,10 +916,9 @@ class _ActionData {
   final VoidCallback onTap;
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Streak achievement
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// Streak achievement (كما هو)
+// ─────────────────────────────────────────────────────────────
 class _StreakAchievementCard extends StatelessWidget {
   const _StreakAchievementCard({
     required this.current,
@@ -1242,9 +1022,8 @@ class _StreakAchievementCard extends StatelessWidget {
                     value: progress.clamp(0, 1),
                     minHeight: 9,
                     backgroundColor: Colors.white.withValues(alpha: .12),
-                    valueColor: const AlwaysStoppedAnimation(
-                      AppColors.goldBright,
-                    ),
+                    valueColor:
+                        const AlwaysStoppedAnimation(AppColors.goldBright),
                   ),
                 ),
                 const SizedBox(height: 6),
@@ -1272,34 +1051,27 @@ class _StreakAchievementCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Habits card
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// Habits card (بدون أذكار)
+// ─────────────────────────────────────────────────────────────
 class _HabitsCard extends StatelessWidget {
   const _HabitsCard({
-    required this.athkar,
     required this.habits,
     required this.prayer,
-    required this.onAthkarTap,
     required this.onPrayerTap,
   });
 
-  final AthkarProvider athkar;
   final HabitStreakProvider habits;
   final PrayerProvider prayer;
-  final void Function(AthkarCategory) onAthkarTap;
   final VoidCallback onPrayerTap;
 
   @override
   Widget build(BuildContext context) {
     final rows = <Widget>[];
 
-    // Remaining prayers
-    final remaining = PrayerName.values.where((p) {
-      final log = prayer.todayLogs[p];
-      return log == null || !log.isRecorded;
-    }).length;
+    final remaining = PrayerName.values
+        .where((p) => prayer.statuses[p] == PrayerStatus.pending)
+        .length;
     if (remaining > 0) {
       rows.add(_habitRow(
         icon: Icons.mosque_rounded,
@@ -1311,36 +1083,7 @@ class _HabitsCard extends StatelessWidget {
       ));
     }
 
-    // Morning athkar
-    final morning =
-        athkar.categories.where((c) => c.id == 'morning').firstOrNull;
-    if (morning != null) {
-      final done = athkar.completedCountIn(morning);
-      rows.add(_habitRow(
-        icon: Icons.wb_twilight,
-        title: 'أذكار الصباح',
-        progress: '$done / ${morning.totalCount}',
-        completed: done >= morning.totalCount,
-        onTap: () => onAthkarTap(morning),
-      ));
-    }
-
-    // Evening athkar
-    final evening =
-        athkar.categories.where((c) => c.id == 'evening').firstOrNull;
-    if (evening != null) {
-      final done = athkar.completedCountIn(evening);
-      rows.add(_habitRow(
-        icon: Icons.nights_stay,
-        title: 'أذكار المساء',
-        progress: '$done / ${evening.totalCount}',
-        completed: done >= evening.totalCount,
-        onTap: () => onAthkarTap(evening),
-      ));
-    }
-
-    // Active habit streaks (top 2)
-    for (final h in habits.active.take(2)) {
+    for (final h in habits.active.take(3)) {
       rows.add(_habitRow(
         icon: Icons.local_fire_department,
         title: h.labelAr,
@@ -1436,10 +1179,9 @@ class _HabitsCard extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Next achievement
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// Next achievement (كما هو — badges تبقى)
+// ─────────────────────────────────────────────────────────────
 class _NextAchievementCard extends StatelessWidget {
   const _NextAchievementCard({required this.badges});
   final BadgeProvider badges;
@@ -1483,8 +1225,7 @@ class _NextAchievementCard extends StatelessWidget {
         children: [
           const Row(
             children: [
-              Icon(Icons.emoji_events,
-                  color: AppColors.goldBright, size: 18),
+              Icon(Icons.emoji_events, color: AppColors.goldBright, size: 18),
               SizedBox(width: 8),
               Text(
                 'إنجازك القادم',
@@ -1510,8 +1251,7 @@ class _NextAchievementCard extends StatelessWidget {
                     width: 2,
                   ),
                 ),
-                child: Icon(next.iconData,
-                    color: next.tier.color, size: 24),
+                child: Icon(next.iconData, color: next.tier.color, size: 24),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -1548,20 +1288,17 @@ class _NextAchievementCard extends StatelessWidget {
             ),
           ),
           const SizedBox(height: 6),
-          Text(
-            'الهدف: $target',
-            style: AppText.caption.copyWith(fontSize: 11),
-          ),
+          Text('الهدف: $target',
+              style: AppText.caption.copyWith(fontSize: 11)),
         ],
       ),
     );
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Lesson
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// Lesson card (كما هو)
+// ─────────────────────────────────────────────────────────────
 class _LessonCard extends StatelessWidget {
   const _LessonCard({
     required this.title,
@@ -1574,57 +1311,55 @@ class _LessonCard extends StatelessWidget {
   final VoidCallback onTap;
 
   @override
-  Widget build(BuildContext context) {
-    return RibbonCard(
-      accent: AppColors.iman,
-      padding: const EdgeInsets.all(15),
-      onTap: onTap,
-      child: Row(
-        children: [
-          Container(
-            width: 48,
-            height: 48,
-            decoration: BoxDecoration(
-              color: AppColors.iman.withValues(alpha: .15),
-              borderRadius: BorderRadius.circular(16),
+  Widget build(BuildContext context) => RibbonCard(
+        accent: AppColors.iman,
+        padding: const EdgeInsets.all(15),
+        onTap: onTap,
+        child: Row(
+          children: [
+            Container(
+              width: 48,
+              height: 48,
+              decoration: BoxDecoration(
+                color: AppColors.iman.withValues(alpha: .15),
+                borderRadius: BorderRadius.circular(16),
+              ),
+              child: const Icon(Icons.headphones_rounded,
+                  color: Color(0xFFC5B7FF), size: 25),
             ),
-            child: const Icon(Icons.headphones_rounded,
-                color: Color(0xFFC5B7FF), size: 25),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text('درس اليوم',
-                    style: TextStyle(color: AppColors.gold, fontSize: 12)),
-                const SizedBox(height: 4),
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: const TextStyle(
-                    color: AppColors.text,
-                    fontWeight: FontWeight.w700,
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text('درس اليوم',
+                      style: TextStyle(color: AppColors.gold, fontSize: 12)),
+                  const SizedBox(height: 4),
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: const TextStyle(
+                      color: AppColors.text,
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
-          ),
-          Text(duration,
-              style: AppText.caption.copyWith(color: AppColors.textSecondary)),
-          const SizedBox(width: 5),
-          const Icon(Icons.chevron_left, color: AppColors.gold),
-        ],
-      ),
-    );
-  }
+            Text(duration,
+                style:
+                    AppText.caption.copyWith(color: AppColors.textSecondary)),
+            const SizedBox(width: 5),
+            const Icon(Icons.chevron_left, color: AppColors.gold),
+          ],
+        ),
+      );
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Mini balance
-// ─────────────────────────────────────────────────────────────────────────────
-
+// ─────────────────────────────────────────────────────────────
+// Mini balance (كما هو)
+// ─────────────────────────────────────────────────────────────
 class _MiniBalance extends StatelessWidget {
   const _MiniBalance({
     required this.label,
@@ -1639,38 +1374,36 @@ class _MiniBalance extends StatelessWidget {
   final Color color;
 
   @override
-  Widget build(BuildContext context) {
-    return RibbonCard(
-      accent: color,
-      radius: 18,
-      padding: const EdgeInsets.all(13),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 22),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    color: color,
-                    fontSize: 19,
-                    fontWeight: FontWeight.w800,
+  Widget build(BuildContext context) => RibbonCard(
+        accent: color,
+        radius: 18,
+        padding: const EdgeInsets.all(13),
+        child: Row(
+          children: [
+            Icon(icon, color: color, size: 22),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    value,
+                    style: TextStyle(
+                      color: color,
+                      fontSize: 19,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
-                ),
-                Text(
-                  label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: AppText.caption.copyWith(fontSize: 10),
-                ),
-              ],
+                  Text(
+                    label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: AppText.caption.copyWith(fontSize: 10),
+                  ),
+                ],
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-  }
+          ],
+        ),
+      );
 }

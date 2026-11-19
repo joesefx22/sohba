@@ -2,25 +2,23 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import '../../providers/auth_provider.dart';
+import '../../providers/badge_provider.dart';
 import '../../providers/group_provider.dart';
 import '../../providers/streak_provider.dart';
-import '../../providers/badge_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
 import '../../widgets/glass_scaffold.dart';
 import '../../widgets/ribbon_card.dart';
 import '../admin/admin_dashboard_page.dart';
 import '../admin/admin_lessons_page.dart';
-import '../admin/seed_athkar_page.dart';
-import '../settings/settings_page.dart';
-import '../titles/titles_page.dart';
+import '../leaderboard/leaderboard_page.dart';
 import '../ledger/ledger_page.dart';
 import '../qiyam/qiyam_page.dart';
-import '../leaderboard/leaderboard_page.dart';
+import '../settings/settings_page.dart';
+import '../titles/titles_page.dart';
 
 class ProfilePage extends StatelessWidget {
   final bool embedded;
-
   const ProfilePage({super.key, this.embedded = false});
 
   @override
@@ -31,8 +29,8 @@ class ProfilePage extends StatelessWidget {
     final group = context.watch<GroupProvider>();
 
     final profile = auth.profile ?? {};
-    final iman = ((profile['iman'] ?? 0) as num).toDouble();
     final hasanat = (profile['total_hasanat'] ?? 0) as int;
+    final sayyiat = (profile['total_sayyiat_unrepented'] ?? 0) as int;
     final avatarUrl = profile['avatar_url'] as String?;
     final initial = auth.displayName.isNotEmpty
         ? auth.displayName.characters.first
@@ -42,21 +40,19 @@ class ProfilePage extends StatelessWidget {
       child: ListView(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
         children: [
-          // ── Hero ──
           _ProfileHero(
             name: auth.displayName,
             groupName: group.group?['name'] as String?,
             avatarUrl: avatarUrl,
             initial: initial,
-            iman: iman,
             hasanat: hasanat,
+            sayyiat: sayyiat,
             streak: streak.currentStreak,
             unlockedBadges: badges.unlockedCount,
             totalBadges: badges.totalCount,
           ),
           const SizedBox(height: 24),
 
-          // ── Menu items ──
           _item(Icons.settings, 'الإعدادات', AppColors.mint, () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const SettingsPage()),
@@ -77,13 +73,12 @@ class ProfilePage extends StatelessWidget {
               MaterialPageRoute(builder: (_) => const LedgerPage()),
             );
           }),
-          _item(Icons.nights_stay, 'القيام والسنن', AppColors.iman, () {
+          _item(Icons.nights_stay, 'القيام', AppColors.iman, () {
             Navigator.of(context).push(
               MaterialPageRoute(builder: (_) => const QiyamPage()),
             );
           }),
 
-          // ── Admin only ──
           if (auth.isAdmin) ...[
             const SizedBox(height: 8),
             Padding(
@@ -105,7 +100,8 @@ class ProfilePage extends StatelessWidget {
               ),
             ),
             const SizedBox(height: 8),
-            _item(Icons.admin_panel_settings, 'لوحة الإدارة', AppColors.gold, () {
+            _item(Icons.admin_panel_settings, 'لوحة الإدارة', AppColors.gold,
+                () {
               Navigator.of(context).push(
                 MaterialPageRoute(
                     builder: (_) => const AdminDashboardPage()),
@@ -115,12 +111,6 @@ class ProfilePage extends StatelessWidget {
               Navigator.of(context).push(
                 MaterialPageRoute(
                     builder: (_) => const AdminLessonsPage()),
-              );
-            }),
-            _item(Icons.cloud_upload, 'رفع الأذكار (أدمن)', AppColors.iman, () {
-              Navigator.of(context).push(
-                MaterialPageRoute(
-                    builder: (_) => const SeedAthkarPage()),
               );
             }),
           ],
@@ -210,16 +200,14 @@ class ProfilePage extends StatelessWidget {
   }
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-
 class _ProfileHero extends StatelessWidget {
   const _ProfileHero({
     required this.name,
     required this.groupName,
     required this.avatarUrl,
     required this.initial,
-    required this.iman,
     required this.hasanat,
+    required this.sayyiat,
     required this.streak,
     required this.unlockedBadges,
     required this.totalBadges,
@@ -229,8 +217,8 @@ class _ProfileHero extends StatelessWidget {
   final String? groupName;
   final String? avatarUrl;
   final String initial;
-  final double iman;
   final int hasanat;
+  final int sayyiat;
   final int streak;
   final int unlockedBadges;
   final int totalBadges;
@@ -259,10 +247,9 @@ class _ProfileHero extends StatelessWidget {
             ),
             child: CircleAvatar(
               backgroundColor: AppColors.background,
-              backgroundImage:
-                  avatarUrl != null && avatarUrl!.isNotEmpty
-                      ? NetworkImage(avatarUrl!)
-                      : null,
+              backgroundImage: avatarUrl != null && avatarUrl!.isNotEmpty
+                  ? NetworkImage(avatarUrl!)
+                  : null,
               child: avatarUrl == null || avatarUrl!.isEmpty
                   ? Text(
                       initial,
@@ -310,19 +297,19 @@ class _ProfileHero extends StatelessWidget {
             children: [
               Expanded(
                 child: _stat(
-                  Icons.stars_rounded,
-                  iman.toStringAsFixed(1),
-                  'إيمان',
-                  AppColors.goldBright,
+                  Icons.eco_rounded,
+                  '$hasanat',
+                  'حسنات',
+                  AppColors.emerald,
                 ),
               ),
               _divider(),
               Expanded(
                 child: _stat(
-                  Icons.eco_rounded,
-                  '$hasanat',
-                  'حسنات',
-                  AppColors.emerald,
+                  Icons.remove_circle_outline,
+                  '$sayyiat',
+                  'سيئات',
+                  AppColors.error,
                 ),
               ),
             ],

@@ -3,7 +3,6 @@ import 'package:flutter/material.dart';
 import '../../theme/app_colors.dart';
 import '../../theme/app_text.dart';
 import '../../widgets/glass_container.dart';
-import '../athkar/athkar_page.dart';
 import '../lessons/daily_lesson_page.dart';
 import '../ledger/ledger_page.dart';
 
@@ -20,8 +19,7 @@ class ContentTab extends StatelessWidget {
           children: [
             Text('المحتوى', style: AppText.heading),
             const SizedBox(height: 4),
-            Text('دروس، أذكار، ومصادر',
-                style: AppText.caption),
+            Text('دروس ومصادر', style: AppText.caption),
             const SizedBox(height: 20),
 
             _card(
@@ -30,14 +28,6 @@ class ContentTab extends StatelessWidget {
               title: 'دروس اليوم',
               subtitle: 'دروس قصيرة أقل من 5 دقائق',
               onTap: () => _push(context, const DailyLessonPage()),
-            ),
-            const SizedBox(height: 10),
-            _card(
-              context,
-              icon: Icons.menu_book,
-              title: 'مكتبة الأذكار',
-              subtitle: 'حصن المسلم كاملاً',
-              onTap: () => _push(context, const AthkarPage()),
             ),
             const SizedBox(height: 10),
             _card(
