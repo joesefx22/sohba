@@ -5,7 +5,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import '../../providers/auth_provider.dart';
 import '../../repositories/qiyam_repository.dart';
 import '../../theme/app_colors.dart';
-import '../../theme/app_text.dart';
 import '../../widgets/error_state.dart';
 import '../../widgets/glass_scaffold.dart';
 import '../../widgets/ribbon_card.dart';

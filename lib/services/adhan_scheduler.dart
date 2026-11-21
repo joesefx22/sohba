@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 
-import '../models/prayer_log.dart';
 import 'adhan_audio_service.dart';
 import 'adhan_service.dart';
 import 'notification_service.dart';

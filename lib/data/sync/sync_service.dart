@@ -11,15 +11,17 @@ class SyncService {
   final _queue = SyncQueue.instance;
   final _client = Supabase.instance.client;
 
-  StreamSubscription? _connSub;
+  StreamSubscription<List<ConnectivityResult>>? _connSub;
   Timer? _retryTimer;
   bool _busy = false;
   int _backoffSeconds = 30;
 
   void start() {
     _connSub?.cancel();
-    _connSub = Connectivity().onConnectivityChanged.listen((r) {
-      if (r != ConnectivityResult.none) _flush();
+    _connSub = Connectivity().onConnectivityChanged.listen((results) {
+      final hasConnection =
+          results.any((r) => r != ConnectivityResult.none);
+      if (hasConnection) _flush();
     });
     _retryTimer?.cancel();
     _retryTimer = Timer.periodic(const Duration(seconds: 30), (_) => _flush());
@@ -38,7 +40,10 @@ class SyncService {
     _busy = true;
     try {
       final pending = await _queue.peek(limit: 50);
-      if (pending.isEmpty) { _backoffSeconds = 30; return; }
+      if (pending.isEmpty) {
+        _backoffSeconds = 30;
+        return;
+      }
       for (final item in pending) {
         try {
           switch (item.op) {
@@ -46,7 +51,10 @@ class SyncService {
               await _client.from(item.table).upsert(item.payload);
               break;
             case SyncOp.delete:
-              await _client.from(item.table).delete().eq('id', item.payload['id']);
+              await _client
+                  .from(item.table)
+                  .delete()
+                  .eq('id', item.payload['id']);
               break;
           }
           await _queue.markDone(item.id);

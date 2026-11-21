@@ -108,7 +108,7 @@ class _PrayerCompleteAnimationState extends State<PrayerCompleteAnimation>
         color: Colors.transparent,
         child: AnimatedBuilder(
           animation: _c,
-          builder: (_, __) => Stack(
+          builder: (_, _) => Stack(
             children: [
               Positioned.fill(
                 child: ColoredBox(

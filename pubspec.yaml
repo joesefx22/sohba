@@ -1,7 +1,7 @@
 name: sohba
 description: "صحبة — رفيقك على طريق الطاعة"
 publish_to: 'none'
-version: 0.1.0+1
+version: 0.2.0+2
 
 environment:
   sdk: ^3.11.0
@@ -47,35 +47,29 @@ dependencies:
   app_links: ^6.3.0
   url_launcher: ^6.3.0
 
-connectivity_plus: ^6.0.5
+  # ---------- Offline + Updates ----------
+  connectivity_plus: ^6.0.5
   package_info_plus: ^8.0.0
   version: ^3.0.2
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^6.0.0
   mocktail: ^1.0.4
 
-  # ---------- Icon + splash generators ----------
   flutter_launcher_icons: ^0.14.1
   flutter_native_splash: ^2.4.1
 
-# ============================================
-# FLUTTER BLOCK
-# ============================================
 flutter:
   uses-material-design: true
   assets:
-    - .env
-    - assets/athkar/
+    # ✅ .env اتشال — القيم في lib/config/env_config.dart
     - assets/icon/
     - assets/audio/
-    - assets/images/sohba/           # hero_mosque.png + أي صورة تانية
-    - assets/images/sohba/prayers/   # fajr.jpg / dhuhr.jpg / ...
+    - assets/images/sohba/
+    - assets/images/sohba/prayers/
 
-# ============================================
-# LAUNCHER ICON
-# ============================================
 flutter_launcher_icons:
   android: "ic_launcher"
   ios: true
@@ -95,11 +89,8 @@ flutter_launcher_icons:
     generate: true
     image_path: "assets/icon/icon.png"
 
-# ============================================
-# NATIVE SPLASH  ← كان ناقص، اتضاف
-# ============================================
 flutter_native_splash:
-  color: "#071612"                      # نفس background_color بتاع الأيقونة
+  color: "#071612"
   image: assets/icon/icon.png
   color_dark: "#071612"
   image_dark: assets/icon/icon.png

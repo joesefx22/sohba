@@ -4,7 +4,6 @@ import 'package:provider/provider.dart';
 import '../../models/prayer_log.dart';
 import '../../providers/auth_provider.dart';
 import '../../providers/lock_provider.dart';
-import '../../providers/prayer_provider.dart';
 import '../../theme/app_colors.dart';
 import '../../widgets/glass_container.dart';
 import '../../widgets/glass_scaffold.dart';
@@ -60,12 +59,13 @@ class LockScreen extends StatelessWidget {
                       color: Colors.black.withValues(alpha: 0.3),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                          color: AppColors.warning.withValues(alpha: 0.3)),
+                        color: AppColors.warning.withValues(alpha: 0.3),
+                      ),
                     ),
                     child: const Column(
                       children: [
                         Text(
-                          'هل صليت الصلاة؟',
+                          'استغفر الله وارجع لرحلتك',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,
@@ -74,8 +74,8 @@ class LockScreen extends StatelessWidget {
                         ),
                         SizedBox(height: 8),
                         Text(
-                          'إن كنت صليتها قضاءً، اضغط للاستمرار. '
-                          'ستُسجَّل توبة ويُعاد فتح رحلتك.',
+                          'النظام الجديد لا يعتمد على القضاء. '
+                          'اعترف بتقصيرك واستغفر، ثم أكمل رحلتك.',
                           style: TextStyle(
                             fontSize: 12,
                             color: AppColors.textSecondary,
@@ -89,9 +89,9 @@ class LockScreen extends StatelessWidget {
                   SizedBox(
                     width: double.infinity,
                     child: FilledButton.icon(
-                      onPressed: () => _confirmPrayed(context),
-                      icon: const Icon(Icons.check),
-                      label: const Text('نعم، صليتها — افتح رحلتي'),
+                      onPressed: () => _unlock(context),
+                      icon: const Icon(Icons.lock_open),
+                      label: const Text('استغفرت — افتح رحلتي'),
                       style: FilledButton.styleFrom(
                         backgroundColor: AppColors.emerald,
                         foregroundColor: Colors.white,
@@ -116,27 +116,14 @@ class LockScreen extends StatelessWidget {
     );
   }
 
-  Future<void> _confirmPrayed(BuildContext context) async {
+  Future<void> _unlock(BuildContext context) async {
     final auth = context.read<AuthProvider>();
     final lock = context.read<LockProvider>();
-    final prayer = context.read<PrayerProvider>();
 
     final userId = auth.user!.id;
-    final p = lock.state.prayer;
 
-    if (p != null) {
-      final pe = PrayerName.values.firstWhere(
-        (e) => e.name == p,
-        orElse: () => PrayerName.fajr,
-      );
-      await prayer.recordPrayer(
-        userId: userId,
-        prayer: pe,
-        status: PrayerStatus.qada,
-      );
-      await prayer.markRepented(userId: userId, prayer: pe);
-    }
-
+    // النظام الجديد: مفيش قضاء، مفيش توبة برمجية.
+    // الصلاة الفائتة تفضل missed بـ 200 سيئة في السجل.
     await lock.unlock(userId);
     await auth.refreshProfile();
   }

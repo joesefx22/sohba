@@ -1,33 +1,31 @@
 /// Sohba — Environment configuration.
 ///
-/// ✅ SECURE: values are injected at build time via `--dart-define` or
-/// `--dart-define-from-file`. They are **not** bundled as an asset, so
-/// reverse-engineering the APK won't reveal them.
+/// ✅ Approach: القيم الحقيقية هنا كـ `defaultValue`.
+/// تقدر تعمل override وقت البناء بـ `--dart-define` (للـ staging/prod).
 ///
 /// ─── Development ─────────────────────────────────────────────
-///   flutter run --dart-define-from-file=env.json
+///   flutter run                              ← يستخدم القيم هنا
 ///
 /// ─── Release ────────────────────────────────────────────────
-///   flutter build apk \
-///     --dart-define=SUPABASE_URL=https://xxx.supabase.co \
-///     --dart-define=SUPABASE_ANON_KEY=eyJ...
+///   flutter build apk --release              ← يستخدم القيم هنا
 ///
-/// `env.json` (create it locally, add to .gitignore):
-///   {
-///     "SUPABASE_URL": "https://xxx.supabase.co",
-///     "SUPABASE_ANON_KEY": "eyJ..."
-///   }
+/// ─── Override (اختياري) ─────────────────────────────────────
+///   flutter build apk --release \
+///     --dart-define=SUPABASE_URL=https://staging.supabase.co \
+///     --dart-define=SUPABASE_ANON_KEY=sb_publishable_xxx
 class EnvConfig {
   EnvConfig._();
 
+  /// ⚠️ SUPABASE_ANON_KEY من نوع `sb_publishable_*` — مصمم يكون public،
+  /// آمن إنه يكون في الكود. الحماية الحقيقية عبر RLS في قاعدة البيانات.
   static const String supabaseUrl = String.fromEnvironment(
     'SUPABASE_URL',
-    defaultValue: '',
+    defaultValue: 'https://updsclkuglvdxllhptru.supabase.co',
   );
 
   static const String supabaseAnonKey = String.fromEnvironment(
     'SUPABASE_ANON_KEY',
-    defaultValue: '',
+    defaultValue: 'sb_publishable_BJG083YVFK0RmaJbNydKHQ_eYYgdqr8',
   );
 
   static bool get isConfigured =>

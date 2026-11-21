@@ -32,3 +32,6 @@ env.json
 .env.local
 *.env
 !.env.example
+.env
+*.env
+

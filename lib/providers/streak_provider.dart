@@ -32,7 +32,6 @@ class StreakProvider extends ChangeNotifier {
   List<DateTime> get activityDates => List.unmodifiable(_activityDates);
   bool get loading => _loading;
 
-  /// Bonus multiplier applied to hasanat.
   double get bonusMultiplier =>
       StreakService.streakBonusMultiplier(_currentStreak);
 
@@ -62,7 +61,6 @@ class StreakProvider extends ChangeNotifier {
   // STREAK PROTECTION
   // ============================================
 
-  /// هل يمكن حماية يوم أمس؟
   bool get canProtectYesterday {
     if (_currentStreak == 0) return false;
     if (_lastActiveDate == null) return false;
@@ -71,18 +69,20 @@ class StreakProvider extends ChangeNotifier {
     final yesterday = today.subtract(const Duration(days: 1));
     final dayBefore = today.subtract(const Duration(days: 2));
     final last = DateTime(
-        _lastActiveDate!.year, _lastActiveDate!.month, _lastActiveDate!.day);
+      _lastActiveDate!.year,
+      _lastActiveDate!.month,
+      _lastActiveDate!.day,
+    );
     return last == dayBefore && yesterday != dayBefore;
   }
 
-  /// يشتري حماية يوم أمس بالهمّة (السيرفر يخصم الهمّة).
   Future<bool> protectYesterday(String userId) async {
     try {
       await Supabase.instance.client.rpc(
         'protect_streak',
         params: {
           'p_user_id': userId,
-          'p_date': null, // السيرفر يستخدم أمس
+          'p_date': null,
         },
       );
       await loadForUser(userId);
@@ -99,7 +99,6 @@ class StreakProvider extends ChangeNotifier {
     _loading = true;
     notifyListeners();
     try {
-      // Load last 60 days of prayer logs
       final from = DateTime.now().subtract(const Duration(days: 60));
       final logs = await _prayerRepo.getLogsInRange(
         userId: userId,
@@ -121,9 +120,6 @@ class StreakProvider extends ChangeNotifier {
 
   // --- Core ---------------------------------------------------------------
 
-  /// Called after a successful prayer record.
-  /// Recomputes streak server-side (source of truth) and returns
-  /// a milestone value if one was just reached.
   Future<int?> recordActivity({required String userId}) async {
     final now = DateTime.now();
     final today = DateTime(now.year, now.month, now.day);
@@ -156,7 +152,6 @@ class StreakProvider extends ChangeNotifier {
     return null;
   }
 
-  /// Detect if the streak was broken while user was away.
   Future<int?> checkAndHandleLoss({required String userId}) async {
     if (_activityDates.isEmpty) return null;
 
@@ -184,9 +179,10 @@ class StreakProvider extends ChangeNotifier {
   List<DateTime> _deriveActivityDates(List<PrayerLog> logs) {
     final set = <DateTime>{};
     for (final log in logs) {
+      // ✅ النظام الجديد: قضاء اتشال. أي صلاة congregation/individual
+      // بتحسب كيوم نشاط.
       if (log.status == PrayerStatus.congregation ||
-          log.status == PrayerStatus.individual ||
-          log.status == PrayerStatus.qada) {
+          log.status == PrayerStatus.individual) {
         set.add(DateTime(log.date.year, log.date.month, log.date.day));
       }
     }

@@ -33,7 +33,9 @@ class PrayerProvider extends ChangeNotifier {
     final logged = {for (final l in logs) l.prayer: l.status};
 
     _statuses = PrayerEngine.computeStatuses(
-      date: day, logged: logged, now: DateTime.now(),
+      date: day,
+      logged: logged,
+      now: DateTime.now(),
     );
 
     _loading = false;
@@ -60,8 +62,12 @@ class PrayerProvider extends ChangeNotifier {
     final (hasanat, sayyiat) = PrayerEngine.rewardsFor(newStatus);
     final log = PrayerLog(
       id: PrayerLog.makeId(userId, _selectedDate, prayer),
-      userId: userId, date: _selectedDate, prayer: prayer,
-      status: newStatus, hasanat: hasanat, sayyiat: sayyiat,
+      userId: userId,
+      date: _selectedDate,
+      prayer: prayer,
+      status: newStatus,
+      hasanat: hasanat,
+      sayyiat: sayyiat,
       recordedAt: now,
     );
 
@@ -71,6 +77,16 @@ class PrayerProvider extends ChangeNotifier {
     return true;
   }
 
+  /// Legacy alias — lock_screen.dart بينادي `recordPrayer`.
+  Future<bool> recordPrayer(
+    PrayerName prayer, {
+    required bool congregation,
+  }) =>
+      record(prayer, congregation: congregation);
+
+  /// Legacy — نظام القضاء اتشال. no-op ترجع false.
+  Future<bool> markRepented(PrayerName prayer) async => false;
+
   Future<void> _sweepMissed() async {
     final userId = _userId;
     if (userId == null) return;
@@ -78,9 +94,8 @@ class PrayerProvider extends ChangeNotifier {
     final now = DateTime.now();
     final currentDay = PrayerEngine.currentPrayerDay(now);
     final lastSweepStr = await _prefs.getString('last_sweep_date');
-    final lastSweep = lastSweepStr != null
-        ? DateTime.parse(lastSweepStr)
-        : currentDay;
+    final lastSweep =
+        lastSweepStr != null ? DateTime.parse(lastSweepStr) : currentDay;
 
     var d = lastSweep;
     while (d.isBefore(currentDay)) {
@@ -91,12 +106,17 @@ class PrayerProvider extends ChangeNotifier {
         final s = logged[prayer];
         if (s == PrayerStatus.congregation ||
             s == PrayerStatus.individual ||
-            s == PrayerStatus.missed) continue;
+            s == PrayerStatus.missed) {
+          continue;
+        }
 
         await _repo.save(PrayerLog(
           id: PrayerLog.makeId(userId, d, prayer),
-          userId: userId, date: d, prayer: prayer,
-          status: PrayerStatus.missed, sayyiat: 200,
+          userId: userId,
+          date: d,
+          prayer: prayer,
+          status: PrayerStatus.missed,
+          sayyiat: 200,
         ));
       }
       d = d.add(const Duration(days: 1));
@@ -114,7 +134,9 @@ class PrayerProvider extends ChangeNotifier {
         final logs = await _repo.fetchForDate(day);
         final logged = {for (final l in logs) l.prayer: l.status};
         _statuses = PrayerEngine.computeStatuses(
-          date: day, logged: logged, now: DateTime.now(),
+          date: day,
+          logged: logged,
+          now: DateTime.now(),
         );
         notifyListeners();
       }

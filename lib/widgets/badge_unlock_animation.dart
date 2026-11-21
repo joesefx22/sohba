@@ -103,7 +103,7 @@ class _BadgeUnlockAnimationState extends State<BadgeUnlockAnimation>
       color: Colors.transparent,
       child: AnimatedBuilder(
         animation: _c,
-        builder: (_, __) => Stack(
+        builder: (_, _) => Stack(
           alignment: Alignment.center,
           children: [
             Positioned.fill(

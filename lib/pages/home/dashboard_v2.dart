@@ -270,7 +270,7 @@ class _HeroProfile extends StatelessWidget {
                     'assets/images/sohba/hero_mosque.png',
                     fit: BoxFit.cover,
                     alignment: Alignment.topCenter,
-                    errorBuilder: (_, __, ___) => const _MosqueFallback(),
+                    errorBuilder: (_, _, _) => const _MosqueFallback(),
                   ),
                   const DecoratedBox(
                     decoration: BoxDecoration(
@@ -621,7 +621,7 @@ class _SmartNowCardState extends State<_SmartNowCard> {
                 child: Image.asset(
                   'assets/images/sohba/prayers/${prayer.name}.jpg',
                   fit: BoxFit.cover,
-                  errorBuilder: (_, __, ___) => _PrayerFallback(),
+                  errorBuilder: (_, _, _) => _PrayerFallback(),
                 ),
               ),
             ),
